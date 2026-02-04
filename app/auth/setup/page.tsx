@@ -1,0 +1,272 @@
+"use client";
+
+import { useState, useEffect } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { createBrowserClient } from "@/lib/supabase";
+
+export default function SetupAdminPage() {
+  const [email, setEmail] = useState("");
+  const [fullName, setFullName] = useState("");
+  const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [validating, setValidating] = useState(true);
+  const [error, setError] = useState("");
+  const [role, setRole] = useState<"full_admin" | "content_editor">("content_editor");
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const token = searchParams.get("token");
+
+  useEffect(() => {
+    validateInvite();
+  }, [token]);
+
+  const validateInvite = async () => {
+    if (!token) {
+      setError("Invalid invitation link");
+      setValidating(false);
+      return;
+    }
+
+    try {
+      const response = await fetch(`/api/auth/validate-invite?token=${token}`);
+      const data = await response.json();
+
+      if (!response.ok || !data.valid) {
+        throw new Error(data.error || "Invalid or expired invitation");
+      }
+
+      setEmail(data.email);
+      setRole(data.role);
+      setValidating(false);
+    } catch (err: any) {
+      setError(err.message);
+      setValidating(false);
+    }
+  };
+
+  const validatePassword = () => {
+    if (password.length < 8) {
+      return "Password must be at least 8 characters long";
+    }
+    if (!/[A-Z]/.test(password)) {
+      return "Password must contain at least one uppercase letter";
+    }
+    if (!/[a-z]/.test(password)) {
+      return "Password must contain at least one lowercase letter";
+    }
+    if (!/[0-9]/.test(password)) {
+      return "Password must contain at least one number";
+    }
+    return null;
+  };
+
+  const handleSetup = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError("");
+
+    // Validate password
+    const passwordError = validatePassword();
+    if (passwordError) {
+      setError(passwordError);
+      return;
+    }
+
+    if (password !== confirmPassword) {
+      setError("Passwords do not match");
+      return;
+    }
+
+    setLoading(true);
+
+    try {
+      const response = await fetch("/api/auth/setup-admin", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          token,
+          fullName,
+          password,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || "Failed to set up account");
+      }
+
+      // Redirect to login with success message
+      router.push("/login?setup=success");
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (validating) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-purple-50 to-blue-50">
+        <div className="text-center">
+          <div className="text-4xl mb-4">⏳</div>
+          <p className="text-gray-600">Validating invitation...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error && !email) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-purple-50 to-blue-50">
+        <div className="max-w-md w-full bg-white rounded-2xl shadow-xl p-8 text-center">
+          <div className="text-4xl mb-4">❌</div>
+          <h1 className="text-2xl font-bold text-gray-900 mb-4">Invalid Invitation</h1>
+          <p className="text-gray-600 mb-6">{error}</p>
+          <a
+            href="/login"
+            className="inline-block bg-purple-600 text-white px-6 py-3 rounded-lg hover:bg-purple-700 transition-colors"
+          >
+            Go to Login
+          </a>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-purple-50 to-blue-50">
+      <div className="max-w-md w-full bg-white rounded-2xl shadow-xl p-8">
+        {/* Header */}
+        <div className="text-center mb-8">
+          <div className="text-4xl mb-4">🎯</div>
+          <h1 className="text-3xl font-bold text-gray-900 mb-2">Set Up Admin Account</h1>
+          <p className="text-gray-600">Complete your profile to get started</p>
+        </div>
+
+        {/* Role Badge */}
+        <div className="mb-6 p-4 bg-purple-50 border border-purple-200 rounded-lg">
+          <p className="text-sm text-gray-700">
+            <strong>Role:</strong>{" "}
+            <span className="text-purple-700 font-medium">
+              {role === "full_admin" ? "Full Admin" : "Content Editor"}
+            </span>
+          </p>
+          {role === "full_admin" ? (
+            <p className="text-xs text-gray-600 mt-1">
+              Can manage everything: packs, samples, creators, users, plans, and invite admins
+            </p>
+          ) : (
+            <p className="text-xs text-gray-600 mt-1">
+              Can manage: packs, samples, creators, permissions. Cannot: see billing, adjust
+              credits, manage plans, invite admins
+            </p>
+          )}
+        </div>
+
+        {/* Error Message */}
+        {error && (
+          <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg">
+            <p className="text-sm text-red-600">{error}</p>
+          </div>
+        )}
+
+        {/* Setup Form */}
+        <form onSubmit={handleSetup} className="space-y-6">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Email Address
+            </label>
+            <input
+              type="email"
+              value={email}
+              disabled
+              className="w-full px-4 py-3 border border-gray-300 rounded-lg bg-gray-50 text-gray-600"
+            />
+            <p className="text-xs text-gray-500 mt-1">Pre-filled from invitation</p>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Full Name <span className="text-red-500">*</span>
+            </label>
+            <input
+              type="text"
+              value={fullName}
+              onChange={(e) => setFullName(e.target.value)}
+              required
+              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+              placeholder="John Doe"
+              disabled={loading}
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              New Password <span className="text-red-500">*</span>
+            </label>
+            <input
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              required
+              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+              placeholder="••••••••"
+              disabled={loading}
+            />
+            <div className="mt-2 space-y-1">
+              <p className="text-xs text-gray-600 font-medium">Password must contain:</p>
+              <ul className="text-xs text-gray-500 space-y-1 ml-4">
+                <li className={password.length >= 8 ? "text-green-600" : ""}>
+                  ✓ At least 8 characters
+                </li>
+                <li className={/[A-Z]/.test(password) ? "text-green-600" : ""}>
+                  ✓ One uppercase letter
+                </li>
+                <li className={/[a-z]/.test(password) ? "text-green-600" : ""}>
+                  ✓ One lowercase letter
+                </li>
+                <li className={/[0-9]/.test(password) ? "text-green-600" : ""}>
+                  ✓ One number
+                </li>
+              </ul>
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Confirm Password <span className="text-red-500">*</span>
+            </label>
+            <input
+              type="password"
+              value={confirmPassword}
+              onChange={(e) => setConfirmPassword(e.target.value)}
+              required
+              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+              placeholder="••••••••"
+              disabled={loading}
+            />
+          </div>
+
+          <button
+            type="submit"
+            disabled={loading}
+            className="w-full bg-purple-600 text-white py-3 px-4 rounded-lg hover:bg-purple-700 transition-colors font-medium disabled:bg-gray-400 disabled:cursor-not-allowed"
+          >
+            {loading ? "Creating Account..." : "Create Admin Account"}
+          </button>
+        </form>
+
+        {/* Back to Login */}
+        <div className="mt-6 text-center">
+          <a
+            href="/login"
+            className="text-sm text-gray-600 hover:text-gray-800"
+          >
+            ← Back to Log In
+          </a>
+        </div>
+      </div>
+    </div>
+  );
+}
