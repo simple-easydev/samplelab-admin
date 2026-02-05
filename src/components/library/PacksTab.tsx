@@ -113,9 +113,11 @@ export function PacksTab({
             <Package className="h-5 w-5 text-blue-500" />
             Sample Packs
           </CardTitle>
-          <Button>
-            <Package className="mr-2 h-4 w-4" />
-            Create New Pack
+          <Button asChild>
+            <Link to="/admin/library/packs/new">
+              <Package className="mr-2 h-4 w-4" />
+              Create New Pack
+            </Link>
           </Button>
         </div>
         <div className="space-y-4 mt-4">

@@ -8,7 +8,10 @@ This document explains the refactored component structure for the Library manage
 src/
 ├── pages/
 │   └── admin/
-│       └── Library.tsx              # Main page (routing & data)
+│       └── library/
+│           ├── Library.tsx          # Main page (routing & data)
+│           ├── CreatePack.tsx       # Create new pack form
+│           └── index.ts             # Module exports
 └── components/
     └── library/
         ├── PacksTab.tsx            # Packs management component
@@ -21,7 +24,7 @@ src/
 ## 🎯 Component Responsibilities
 
 ### Library.tsx (Main Page)
-**Location:** `src/pages/admin/Library.tsx`
+**Location:** `src/pages/admin/library/Library.tsx`
 
 **Responsibilities:**
 - Route parameter management (tab switching via URL)
@@ -39,6 +42,19 @@ src/
 - Unique value extraction for filters
 - Component composition
 ```
+
+### CreatePack.tsx (Create Pack Page)
+**Location:** `src/pages/admin/library/CreatePack.tsx`
+
+**Responsibilities:**
+- Create new pack form with validation
+- Cover image upload with preview
+- Creator, genre, category selection dropdowns
+- Tag management (add/remove)
+- Draft/Published status toggle
+- Form submission and navigation
+
+**Route:** `/admin/library/packs/new`
 
 ### PacksTab.tsx
 **Location:** `src/components/library/PacksTab.tsx`
