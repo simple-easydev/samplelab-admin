@@ -1,35 +1,92 @@
+import { Suspense } from "react";
 import Link from "next/link";
+import { StatsCardSkeleton } from "@/components/LoadingSkeleton";
+import { createServerClient } from "@/lib/supabase-server";
+import type { AdminStats } from "@/types";
 
-async function getAdminStats() {
-  try {
-    // Use relative URL for API route - works in both dev and production
-    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
-    const response = await fetch(
-      `${baseUrl}/api/admin/stats`,
-      {
-        cache: "no-store",
-      }
-    );
-    
-    if (!response.ok) {
-      throw new Error("Failed to fetch stats");
-    }
-    
-    return await response.json();
-  } catch (error) {
-    console.error("Error fetching admin stats:", error);
-    return {
-      total_users: 0,
-      active_subscriptions: 0,
-      total_samples: 0,
-      total_downloads: 0,
-    };
-  }
+// Force dynamic rendering for server components that use cookies
+export const dynamic = 'force-dynamic';
+
+// Server Component - fetches data directly
+async function DashboardStats() {
+  const supabase = await createServerClient();
+  
+  // Fetch stats directly on the server
+  const { data: stats } = await supabase
+    .from("users")
+    .select("id")
+    .then(async (usersResult) => {
+      const { data: customersResult } = await supabase
+        .from("customers")
+        .select("id, subscription_tier");
+      
+      const totalUsers = usersResult.data?.length || 0;
+      const totalCustomers = customersResult?.length || 0;
+      const activeSubscriptions = customersResult?.filter(
+        (c) => c.subscription_tier && c.subscription_tier !== "free"
+      ).length || 0;
+
+      return {
+        data: {
+          total_users: totalUsers,
+          total_customers: totalCustomers,
+          active_subscriptions: activeSubscriptions,
+          total_samples: 0,
+        } as AdminStats,
+      };
+    });
+
+  return (
+    <>
+      <div className="bg-white rounded-lg shadow p-6 border border-gray-200">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-sm font-medium text-gray-600">Admin Users</h3>
+          <span className="text-2xl">🔐</span>
+        </div>
+        <p className="text-3xl font-bold text-gray-900">{stats?.total_users || 0}</p>
+        <p className="text-sm text-gray-500 mt-2">System access</p>
+      </div>
+
+      <div className="bg-white rounded-lg shadow p-6 border border-gray-200">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-sm font-medium text-gray-600">Customers</h3>
+          <span className="text-2xl">👥</span>
+        </div>
+        <p className="text-3xl font-bold text-gray-900">{stats?.total_customers || 0}</p>
+        <p className="text-sm text-green-600 mt-2">↑ Active accounts</p>
+      </div>
+
+      <div className="bg-white rounded-lg shadow p-6 border border-gray-200">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-sm font-medium text-gray-600">Subscriptions</h3>
+          <span className="text-2xl">⭐</span>
+        </div>
+        <p className="text-3xl font-bold text-gray-900">{stats?.active_subscriptions || 0}</p>
+        <p className="text-sm text-green-600 mt-2">↑ Paid members</p>
+      </div>
+
+      <div className="bg-white rounded-lg shadow p-6 border border-gray-200">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-sm font-medium text-gray-600">Samples</h3>
+          <span className="text-2xl">🎵</span>
+        </div>
+        <p className="text-3xl font-bold text-gray-900">{stats?.total_samples || 0}</p>
+        <p className="text-sm text-blue-600 mt-2">In library</p>
+      </div>
+
+      <div className="bg-white rounded-lg shadow p-6 border border-gray-200">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-sm font-medium text-gray-600">Downloads</h3>
+          <span className="text-2xl">📥</span>
+        </div>
+        <p className="text-3xl font-bold text-gray-900">0</p>
+        <p className="text-sm text-purple-600 mt-2">All time</p>
+      </div>
+    </>
+  );
 }
 
-export default async function AdminDashboard() {
-  const stats = await getAdminStats();
-
+export default function AdminDashboard() {
   return (
     <div className="space-y-8">
       <div>
@@ -41,52 +98,21 @@ export default async function AdminDashboard() {
         </p>
       </div>
 
-      {/* Stats Cards */}
+      {/* Stats Cards with Suspense */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
-        <div className="bg-white rounded-lg shadow p-6 border border-gray-200">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="text-sm font-medium text-gray-600">Admin Users</h3>
-            <span className="text-2xl">🔐</span>
-          </div>
-          <p className="text-3xl font-bold text-gray-900">{stats.total_users}</p>
-          <p className="text-sm text-gray-500 mt-2">System access</p>
-        </div>
-
-        <div className="bg-white rounded-lg shadow p-6 border border-gray-200">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="text-sm font-medium text-gray-600">Customers</h3>
-            <span className="text-2xl">👥</span>
-          </div>
-          <p className="text-3xl font-bold text-gray-900">{stats.total_customers}</p>
-          <p className="text-sm text-green-600 mt-2">↑ Active accounts</p>
-        </div>
-
-        <div className="bg-white rounded-lg shadow p-6 border border-gray-200">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="text-sm font-medium text-gray-600">Subscriptions</h3>
-            <span className="text-2xl">⭐</span>
-          </div>
-          <p className="text-3xl font-bold text-gray-900">{stats.active_subscriptions}</p>
-          <p className="text-sm text-green-600 mt-2">↑ Paid members</p>
-        </div>
-
-        <div className="bg-white rounded-lg shadow p-6 border border-gray-200">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="text-sm font-medium text-gray-600">Samples</h3>
-            <span className="text-2xl">🎵</span>
-          </div>
-          <p className="text-3xl font-bold text-gray-900">{stats.total_samples}</p>
-          <p className="text-sm text-blue-600 mt-2">In library</p>
-        </div>
-
-        <div className="bg-white rounded-lg shadow p-6 border border-gray-200">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="text-sm font-medium text-gray-600">Downloads</h3>
-            <span className="text-2xl">📥</span>
-          </div>
-          <p className="text-3xl font-bold text-gray-900">{stats.total_downloads}</p>
-          <p className="text-sm text-purple-600 mt-2">All time</p>
-        </div>
+        <Suspense
+          fallback={
+            <>
+              <StatsCardSkeleton />
+              <StatsCardSkeleton />
+              <StatsCardSkeleton />
+              <StatsCardSkeleton />
+              <StatsCardSkeleton />
+            </>
+          }
+        >
+          <DashboardStats />
+        </Suspense>
       </div>
 
       {/* Quick Actions */}

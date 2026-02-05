@@ -1,14 +1,11 @@
-import { requireAdmin } from "@/lib/auth";
 import AdminSidebar from "@/components/AdminSidebar";
 
-export default async function AdminLayout({
+// ⚡ Auth check now happens in middleware for better performance
+export default function AdminLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  // Check if user is admin, redirect if not
-  await requireAdmin();
-
   return (
     <div className="flex">
       <AdminSidebar />
