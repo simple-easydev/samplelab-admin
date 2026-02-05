@@ -44,13 +44,13 @@ export default function App() {
           >
             <Route index element={<AdminDashboard />} />
             
-            {/* Library Routes */}
+            {/* Library Routes - All go to same page with tabs */}
             <Route path="library" element={<Library />} />
-            <Route path="library/packs" element={<PlaceholderPage title="Packs" description="Manage sample packs" />} />
-            <Route path="library/samples" element={<Samples />} />
-            <Route path="library/genres" element={<PlaceholderPage title="Genres" description="Manage music genres" />} />
-            <Route path="library/categories" element={<PlaceholderPage title="Categories" description="Manage sample categories" />} />
-            <Route path="library/moods" element={<PlaceholderPage title="Moods" description="Manage mood tags" />} />
+            <Route path="library/packs" element={<Navigate to="/admin/library?tab=packs" replace />} />
+            <Route path="library/samples" element={<Navigate to="/admin/library?tab=samples" replace />} />
+            <Route path="library/genres" element={<Navigate to="/admin/library?tab=genres" replace />} />
+            <Route path="library/categories" element={<Navigate to="/admin/library?tab=categories" replace />} />
+            <Route path="library/moods" element={<Navigate to="/admin/library?tab=moods" replace />} />
             
             {/* Creators */}
             <Route path="creators" element={<Creators />} />

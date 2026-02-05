@@ -54,11 +54,11 @@ export const navigation: NavigationItem[] = [
     bgColor: "bg-purple-500/10",
     hoverColor: "hover:bg-purple-500/20",
     items: [
-      { name: "Packs", href: "/admin/library/packs", icon: Package },
-      { name: "Samples", href: "/admin/library/samples", icon: Music },
-      { name: "Genres", href: "/admin/library/genres", icon: Tag },
-      { name: "Categories", href: "/admin/library/categories", icon: Folder },
-      { name: "Moods", href: "/admin/library/moods", icon: Heart },
+      { name: "Packs", href: "/admin/library?tab=packs", icon: Package },
+      { name: "Samples", href: "/admin/library?tab=samples", icon: Music },
+      { name: "Genres", href: "/admin/library?tab=genres", icon: Tag },
+      { name: "Categories", href: "/admin/library?tab=categories", icon: Folder },
+      { name: "Moods", href: "/admin/library?tab=moods", icon: Heart },
     ],
   },
   {
