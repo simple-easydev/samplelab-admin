@@ -1,10 +1,11 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
-import { Package, Search, Filter, ArrowUpDown, Eye, Edit, Ban, Check, Trash2, X, MoreHorizontal } from "lucide-react";
+import { Package, Search, Filter, ArrowUpDown, Eye, Edit, Ban, Check, Trash2, X, MoreHorizontal, Loader2, AlertCircle } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import {
   Table,
   TableBody,
@@ -21,39 +22,37 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { supabase } from "@/lib/supabase";
 
 type PackStatusFilter = "all" | "Draft" | "Published" | "Disabled";
 type SortOption = "a-z" | "newest" | "most-downloaded";
 
 interface Pack {
-  id: number;
+  id: string;
   name: string;
-  creator: string;
-  genre: string;
-  category: string;
+  creator_id: string;
+  creator_name: string;
+  category_id: string;
+  category_name: string;
+  genres: string[]; // Array of genre names
   tags: string[];
-  samples: number;
+  samples_count: number;
   downloads: number;
   status: "Draft" | "Published" | "Disabled";
-  coverUrl?: string;
-  createdAt: string;
+  cover_url?: string;
+  created_at: string;
+  is_premium: boolean;
 }
 
-interface PacksTabProps {
-  packs: Pack[];
-  uniqueCreators: string[];
-  uniqueGenres: string[];
-  uniqueCategories: string[];
-  uniqueTags: string[];
-}
-
-export function PacksTab({ 
-  packs, 
-  uniqueCreators, 
-  uniqueGenres, 
-  uniqueCategories, 
-  uniqueTags 
-}: PacksTabProps) {
+export function PacksTab() {
+  const [packs, setPacks] = useState<Pack[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [uniqueCreators, setUniqueCreators] = useState<string[]>([]);
+  const [uniqueGenres, setUniqueGenres] = useState<string[]>([]);
+  const [uniqueCategories, setUniqueCategories] = useState<string[]>([]);
+  const [uniqueTags, setUniqueTags] = useState<string[]>([]);
+  
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<PackStatusFilter>("all");
   const [creatorFilter, setCreatorFilter] = useState<string>("all");
@@ -61,6 +60,107 @@ export function PacksTab({
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
   const [tagFilter, setTagFilter] = useState<string>("all");
   const [sort, setSort] = useState<SortOption>("newest");
+
+  // Fetch packs from Supabase
+  useEffect(() => {
+    async function fetchPacks() {
+      try {
+        setIsLoading(true);
+        setError(null);
+
+        // Fetch packs with related data
+        const { data: packsData, error: packsError } = await supabase
+          .from("packs")
+          .select(`
+            id,
+            name,
+            creator_id,
+            category_id,
+            tags,
+            download_count,
+            status,
+            cover_url,
+            created_at,
+            is_premium,
+            creators (name),
+            categories (name)
+          `)
+          .order("created_at", { ascending: false });
+
+        if (packsError) throw packsError;
+
+        // Get samples count for each pack
+        const { data: samplesCount, error: samplesError } = await supabase
+          .from("samples")
+          .select("pack_id, id")
+          .eq("status", "Active");
+
+        if (samplesError) throw samplesError;
+
+        // Count samples per pack
+        const samplesByPack = samplesCount?.reduce((acc, sample: any) => {
+          acc[sample.pack_id] = (acc[sample.pack_id] || 0) + 1;
+          return acc;
+        }, {} as Record<string, number>) || {};
+
+        // Fetch genres for each pack
+        const { data: packGenresData, error: genresError } = await supabase
+          .from("pack_genres")
+          .select(`
+            pack_id,
+            genres (name)
+          `);
+
+        if (genresError) throw genresError;
+
+        // Group genres by pack
+        const genresByPack = packGenresData?.reduce((acc, pg: any) => {
+          if (!acc[pg.pack_id]) acc[pg.pack_id] = [];
+          acc[pg.pack_id].push((pg.genres as any)?.name);
+          return acc;
+        }, {} as Record<string, string[]>) || {};
+
+        // Transform data
+        const transformedPacks: Pack[] = (packsData || []).map((pack: any) => ({
+          id: pack.id,
+          name: pack.name,
+          creator_id: pack.creator_id,
+          creator_name: pack.creators?.name || "Unknown",
+          category_id: pack.category_id,
+          category_name: pack.categories?.name || "Uncategorized",
+          genres: genresByPack[pack.id] || [],
+          tags: pack.tags || [],
+          samples_count: samplesByPack[pack.id] || 0,
+          downloads: pack.download_count || 0,
+          status: pack.status,
+          cover_url: pack.cover_url,
+          created_at: pack.created_at,
+          is_premium: pack.is_premium,
+        }));
+
+        setPacks(transformedPacks);
+
+        // Extract unique values for filters
+        const creators = Array.from(new Set(transformedPacks.map(p => p.creator_name)));
+        const genres = Array.from(new Set(transformedPacks.flatMap(p => p.genres)));
+        const categories = Array.from(new Set(transformedPacks.map(p => p.category_name)));
+        const tags = Array.from(new Set(transformedPacks.flatMap(p => p.tags)));
+
+        setUniqueCreators(creators);
+        setUniqueGenres(genres);
+        setUniqueCategories(categories);
+        setUniqueTags(tags);
+
+      } catch (err) {
+        console.error("Error fetching packs:", err);
+        setError(err instanceof Error ? err.message : "Failed to load packs");
+      } finally {
+        setIsLoading(false);
+      }
+    }
+
+    fetchPacks();
+  }, []);
 
   const clearFilters = () => {
     setStatusFilter("all");
@@ -83,11 +183,11 @@ export function PacksTab({
     .filter(pack => {
       const matchesSearch =
         pack.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        pack.creator.toLowerCase().includes(searchQuery.toLowerCase());
+        pack.creator_name.toLowerCase().includes(searchQuery.toLowerCase());
       const matchesStatus = statusFilter === "all" || pack.status === statusFilter;
-      const matchesCreator = creatorFilter === "all" || pack.creator === creatorFilter;
-      const matchesGenre = genreFilter === "all" || pack.genre === genreFilter;
-      const matchesCategory = categoryFilter === "all" || pack.category === categoryFilter;
+      const matchesCreator = creatorFilter === "all" || pack.creator_name === creatorFilter;
+      const matchesGenre = genreFilter === "all" || pack.genres.includes(genreFilter);
+      const matchesCategory = categoryFilter === "all" || pack.category_name === categoryFilter;
       const matchesTag = tagFilter === "all" || pack.tags.includes(tagFilter);
 
       return matchesSearch && matchesStatus && matchesCreator && matchesGenre && matchesCategory && matchesTag;
@@ -97,7 +197,7 @@ export function PacksTab({
         case "a-z":
           return a.name.localeCompare(b.name);
         case "newest":
-          return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+          return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
         case "most-downloaded":
           return b.downloads - a.downloads;
         default:
@@ -324,12 +424,41 @@ export function PacksTab({
         </div>
       </CardHeader>
       <CardContent>
-        {/* Results Count */}
-        <div className="mb-4 text-sm text-muted-foreground">
-          Showing {filteredAndSortedPacks.length} of {packs.length} packs
-        </div>
+        {/* Loading State */}
+        {isLoading && (
+          <div className="flex flex-col items-center justify-center py-12">
+            <Loader2 className="h-8 w-8 animate-spin text-blue-500 mb-3" />
+            <span className="text-sm text-gray-600">Loading packs from database...</span>
+          </div>
+        )}
 
-        <Table>
+        {/* Error State */}
+        {error && (
+          <Alert variant="destructive">
+            <AlertCircle className="h-4 w-4" />
+            <AlertDescription>
+              {error}
+              <Button 
+                variant="outline" 
+                size="sm" 
+                className="ml-4"
+                onClick={() => window.location.reload()}
+              >
+                Retry
+              </Button>
+            </AlertDescription>
+          </Alert>
+        )}
+
+        {/* Content - only show if not loading and no error */}
+        {!isLoading && !error && (
+          <>
+            {/* Results Count */}
+            <div className="mb-4 text-sm text-muted-foreground">
+              Showing {filteredAndSortedPacks.length} of {packs.length} packs
+            </div>
+
+            <Table>
           <TableHeader>
             <TableRow>
               <TableHead className="w-20">Cover</TableHead>
@@ -354,9 +483,9 @@ export function PacksTab({
                 <TableRow key={pack.id}>
                   <TableCell>
                     <div className="w-16 h-16 bg-gradient-to-br from-blue-500 to-purple-500 rounded-lg flex items-center justify-center overflow-hidden">
-                      {pack.coverUrl ? (
+                      {pack.cover_url ? (
                         <img 
-                          src={pack.coverUrl} 
+                          src={pack.cover_url} 
                           alt={pack.name}
                           className="w-full h-full object-cover"
                         />
@@ -366,17 +495,32 @@ export function PacksTab({
                     </div>
                   </TableCell>
                   <TableCell className="font-medium">
-                    <Link 
-                      to={`/admin/library/packs/${pack.id}`}
-                      className="text-blue-600 hover:underline"
-                    >
-                      {pack.name}
-                    </Link>
+                    <div className="flex items-center gap-2">
+                      <Link 
+                        to={`/admin/library/packs/${pack.id}`}
+                        className="text-blue-600 hover:underline"
+                      >
+                        {pack.name}
+                      </Link>
+                      {pack.is_premium && (
+                        <Badge variant="default" className="bg-amber-500 hover:bg-amber-600 text-white">
+                          Premium
+                        </Badge>
+                      )}
+                    </div>
                   </TableCell>
-                  <TableCell>{pack.creator}</TableCell>
-                  <TableCell className="text-right">{pack.samples}</TableCell>
+                  <TableCell>{pack.creator_name}</TableCell>
+                  <TableCell className="text-right">{pack.samples_count}</TableCell>
                   <TableCell>
-                    <Badge variant="outline">{pack.genre}</Badge>
+                    {pack.genres.length > 0 ? (
+                      <div className="flex gap-1 flex-wrap">
+                        {pack.genres.map((genre, idx) => (
+                          <Badge key={idx} variant="outline">{genre}</Badge>
+                        ))}
+                      </div>
+                    ) : (
+                      <span className="text-muted-foreground text-sm">No genres</span>
+                    )}
                   </TableCell>
                   <TableCell className="text-right">
                     {pack.downloads.toLocaleString()}
@@ -408,9 +552,11 @@ export function PacksTab({
                             View Pack
                           </Link>
                         </DropdownMenuItem>
-                        <DropdownMenuItem>
-                          <Edit className="mr-2 h-4 w-4" />
-                          Edit Pack
+                        <DropdownMenuItem asChild>
+                          <Link to={`/admin/library/packs/${pack.id}/edit`}>
+                            <Edit className="mr-2 h-4 w-4" />
+                            Edit Pack
+                          </Link>
                         </DropdownMenuItem>
                         <DropdownMenuSeparator />
                         {pack.status === "Published" ? (
@@ -441,6 +587,8 @@ export function PacksTab({
             )}
           </TableBody>
         </Table>
+          </>
+        )}
       </CardContent>
     </Card>
   );

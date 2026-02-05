@@ -13,6 +13,7 @@ import Users from "@/pages/admin/Users";
 import Invite from "@/pages/admin/Invite";
 import Library from "@/pages/admin/library/Library";
 import CreatePack from "@/pages/admin/library/CreatePack";
+import PackDetail from "@/pages/admin/library/PackDetail";
 import Creators from "@/pages/admin/Creators";
 import Plans from "@/pages/admin/Plans";
 import Announcements from "@/pages/admin/Announcements";
@@ -45,6 +46,7 @@ export default function App() {
             {/* Library Routes - All go to same page with tabs */}
             <Route path="library" element={<Library />} />
             <Route path="library/packs/new" element={<CreatePack />} />
+            <Route path="library/packs/:id" element={<PackDetail />} />
             <Route path="library/packs" element={<Navigate to="/admin/library?tab=packs" replace />} />
             <Route path="library/samples" element={<Navigate to="/admin/library?tab=samples" replace />} />
             <Route path="library/genres" element={<Navigate to="/admin/library?tab=genres" replace />} />

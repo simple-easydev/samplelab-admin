@@ -1,12 +1,13 @@
 import { useState, useRef, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, Package, Upload, X, Play, Pause, Trash2, FileAudio } from "lucide-react";
+import { ArrowLeft, Package, Upload, X, Play, Pause, Trash2, FileAudio, Loader2 } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -16,10 +17,31 @@ import {
   DropdownMenuTrigger,
   DropdownMenuCheckboxItem,
 } from "@/components/ui/dropdown-menu";
+import {
+  uploadAudioFile,
+  uploadPackCover,
+  uploadMultipleAudioFiles,
+  createPackWithSamples,
+  getCreators,
+  getGenres,
+  getCategories,
+  type AudioUploadResult,
+} from "@/lib/audio-upload";
 
-const GENRES = ["Trap", "Lo-Fi", "EDM", "House", "Hip Hop", "Synthwave", "Ambient", "Rock", "Jazz", "Classical"];
-const CATEGORIES = ["One-shot", "Loops", "Drums", "Vocals"];
-const CREATORS = ["Producer Mike", "Beat Master", "Rhythm King", "DJ Flow", "Sound Wave"];
+interface Creator {
+  id: string;
+  name: string;
+}
+
+interface Genre {
+  id: string;
+  name: string;
+}
+
+interface Category {
+  id: string;
+  name: string;
+}
 
 interface SampleFile {
   id: string;
@@ -27,7 +49,7 @@ interface SampleFile {
   name: string;
   bpm: string;
   key: string;
-  type: "Loop" | "One-shot" | "Stem";
+  type: "Loop" | "One-shot";
   length: string;
   creditCost: string;
   hasStems: boolean;
@@ -48,10 +70,24 @@ export default function CreatePackPage() {
   });
   const [tagInput, setTagInput] = useState("");
   const [coverPreview, setCoverPreview] = useState<string | null>(null);
+  const [coverFile, setCoverFile] = useState<File | null>(null);
   const [sampleFiles, setSampleFiles] = useState<SampleFile[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState({
+    step: "",
+    current: 0,
+    total: 0,
+    percentage: 0,
+    message: "",
+  });
   const [playingSampleId, setPlayingSampleId] = useState<string | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
+
+  // Reference data from Supabase
+  const [creators, setCreators] = useState<Creator[]>([]);
+  const [genres, setGenres] = useState<Genre[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [isLoadingData, setIsLoadingData] = useState(true);
 
   const handleInputChange = (field: string, value: string) => {
     setFormData(prev => ({ ...prev, [field]: value }));
@@ -74,26 +110,69 @@ export default function CreatePackPage() {
     }));
   };
 
-  const handleGenreToggle = (genre: string) => {
+  const handleGenreToggle = (genreId: string) => {
     setFormData(prev => ({
       ...prev,
-      genres: prev.genres.includes(genre)
-        ? prev.genres.filter(g => g !== genre)
-        : [...prev.genres, genre]
+      genres: prev.genres.includes(genreId)
+        ? prev.genres.filter(g => g !== genreId)
+        : [...prev.genres, genreId]
     }));
+  };
+
+  // Helper to get genre names for display
+  const getSelectedGenreNames = () => {
+    return formData.genres
+      .map(id => genres.find(g => g.id === id)?.name)
+      .filter(Boolean)
+      .join(", ");
+  };
+
+  // Helper to get selected category name
+  const getSelectedCategoryName = () => {
+    return categories.find(c => c.id === formData.category)?.name || "";
+  };
+
+  // Helper to get selected creator name
+  const getSelectedCreatorName = () => {
+    return creators.find(c => c.id === formData.creator)?.name || "";
   };
 
   const handleCoverUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
+      // Store the actual file for upload
+      setCoverFile(file);
+      
+      // Create preview
       const reader = new FileReader();
       reader.onloadend = () => {
         setCoverPreview(reader.result as string);
-        setFormData(prev => ({ ...prev, coverUrl: reader.result as string }));
       };
       reader.readAsDataURL(file);
     }
   };
+
+  // Fetch reference data on mount
+  useEffect(() => {
+    async function fetchReferenceData() {
+      setIsLoadingData(true);
+      try {
+        const [creatorsData, genresData, categoriesData] = await Promise.all([
+          getCreators(),
+          getGenres(),
+          getCategories(),
+        ]);
+        setCreators(creatorsData);
+        setGenres(genresData);
+        setCategories(categoriesData);
+      } catch (error) {
+        console.error("Error fetching reference data:", error);
+      } finally {
+        setIsLoadingData(false);
+      }
+    }
+    fetchReferenceData();
+  }, []);
 
   const handleAudioUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
@@ -187,46 +266,202 @@ export default function CreatePackPage() {
   const handleSaveDraft = async () => {
     // Basic validation
     if (!formData.name || !formData.creator || formData.genres.length === 0 || !formData.category) {
-      alert("Please fill in all required fields");
+      alert("Please fill in all required fields (Name, Creator, Genre, Category)");
       return;
     }
 
-    setIsSubmitting(true);
-    
-    // TODO: Replace with actual API call
-    console.log("Saving draft pack:", { ...formData, samples: sampleFiles, status: "Draft" });
-    
-    // Simulate API call
-    setTimeout(() => {
-      setIsSubmitting(false);
-      alert(`Pack "${formData.name}" saved as draft!`);
-      navigate("/admin/library?tab=packs");
-    }, 1000);
+    await createPack("Draft");
   };
 
   const handlePublish = async () => {
     // Validation
     if (!formData.name || !formData.creator || formData.genres.length === 0 || !formData.category) {
-      alert("Please fill in all required fields");
+      alert("Please fill in all required fields (Name, Creator, Genre, Category)");
       return;
     }
 
     if (sampleFiles.length === 0) {
-      alert("Please upload at least one sample file");
+      alert("Please upload at least one sample file before publishing");
       return;
     }
 
+    await createPack("Published");
+  };
+
+  const createPack = async (status: "Draft" | "Published") => {
     setIsSubmitting(true);
     
-    // TODO: Replace with actual API call
-    console.log("Publishing pack:", { ...formData, samples: sampleFiles, status: "Published" });
-    
-    // Simulate API call
-    setTimeout(() => {
+    // Calculate total steps
+    const totalSteps = 5; // Initialize, cover, samples, stems, database
+    let currentStep = 0;
+
+    const updateProgress = (step: string, message: string, current?: number, total?: number) => {
+      currentStep++;
+      const percentage = Math.round((currentStep / totalSteps) * 100);
+      setUploadProgress({
+        step,
+        current: current || 0,
+        total: total || 0,
+        percentage,
+        message,
+      });
+    };
+
+    try {
+      // Step 1: Initialize
+      updateProgress("Initializing", "Preparing upload...");
+      
+      // Step 2: Upload cover image if provided
+      let coverUrl = "";
+      if (coverFile) {
+        updateProgress("Cover", "Uploading cover image...", 1, 1);
+        const coverResult = await uploadPackCover(coverFile);
+        if (!coverResult.success) {
+          throw new Error(`Cover upload failed: ${coverResult.error}`);
+        }
+        coverUrl = coverResult.url!;
+      } else {
+        currentStep++; // Skip cover step if no file
+      }
+
+      // Step 3: Upload all sample audio files
+      updateProgress("Samples", `Uploading samples...`, 0, sampleFiles.length);
+      const sampleUploadPromises = sampleFiles.map((sample, index) =>
+        uploadAudioFile(sample.file, "samples").then((result: AudioUploadResult) => {
+          setUploadProgress(prev => ({
+            ...prev,
+            current: index + 1,
+            message: `Uploading sample ${index + 1} of ${sampleFiles.length}...`,
+          }));
+          return result;
+        })
+      );
+      const sampleUploadResults = await Promise.all(sampleUploadPromises);
+
+      // Check for upload failures
+      const failedUploads = sampleUploadResults.filter((r: AudioUploadResult) => !r.success);
+      if (failedUploads.length > 0) {
+        throw new Error(
+          `${failedUploads.length} sample(s) failed to upload: ${failedUploads[0].error}`
+        );
+      }
+
+      // Step 4: Upload stems for samples that have them
+      const samplesWithStems = sampleFiles.filter((s) => s.hasStems && s.stemFiles.length > 0);
+      const totalStemFiles = samplesWithStems.reduce((acc, s) => acc + s.stemFiles.length, 0);
+      let stemUploadResults: AudioUploadResult[][] = [];
+      
+      if (totalStemFiles > 0) {
+        updateProgress("Stems", "Uploading stem files...", 0, totalStemFiles);
+        let stemsUploaded = 0;
+        const stemUploadPromises = samplesWithStems.map((sample) =>
+          uploadMultipleAudioFiles(sample.stemFiles, "stems").then((results: AudioUploadResult[]) => {
+            stemsUploaded += results.length;
+            setUploadProgress(prev => ({
+              ...prev,
+              current: stemsUploaded,
+              message: `Uploading stems ${stemsUploaded} of ${totalStemFiles}...`,
+            }));
+            return results;
+          })
+        );
+        stemUploadResults = await Promise.all(stemUploadPromises);
+      } else {
+        currentStep++; // Skip stems step if none
+      }
+
+      // Step 5: Build samples data array with uploaded URLs
+      const samplesData = sampleFiles.map((sample, index) => {
+        const uploadResult = sampleUploadResults[index];
+
+        // Find stems for this sample
+        let stems: { name: string; audio_url: string; file_size_bytes?: number }[] = [];
+        if (sample.hasStems && sample.stemFiles.length > 0) {
+          const stemIndex = samplesWithStems.indexOf(sample);
+          if (stemIndex >= 0) {
+            stems = stemUploadResults[stemIndex]
+              .filter((r: AudioUploadResult) => r.success)
+              .map((result: AudioUploadResult, i: number) => ({
+                name: sample.stemFiles[i].name,
+                audio_url: result.url!,
+                file_size_bytes: sample.stemFiles[i].size,
+              }));
+          }
+        }
+
+        return {
+          name: sample.name,
+          audio_url: uploadResult.url!,
+          bpm: sample.bpm ? parseInt(sample.bpm) : undefined,
+          key: sample.key || undefined,
+          type: sample.type,
+          length: sample.length || undefined,
+          file_size_bytes: sample.file.size,
+          credit_cost: sample.creditCost ? parseInt(sample.creditCost) : undefined,
+          has_stems: sample.hasStems && stems.length > 0,
+          stems,
+        };
+      });
+
+      // Step 5: Create the pack in database
+      updateProgress("Database", "Creating pack in database...", 1, 1);
+      const result = await createPackWithSamples(
+        {
+          name: formData.name,
+          description: formData.description,
+          creator_id: formData.creator, // This is now the UUID from dropdown
+          cover_url: coverUrl,
+          category_id: formData.category, // This is now the UUID from dropdown
+          tags: formData.tags,
+          is_premium: formData.isPremium,
+          status,
+          genres: formData.genres, // Array of genre UUIDs
+        },
+        samplesData
+      );
+
+      if (!result.success) {
+        throw new Error(`Pack creation failed: ${result.error}`);
+      }
+
+      // Success!
+      setUploadProgress({
+        step: "Complete",
+        current: 1,
+        total: 1,
+        percentage: 100,
+        message: status === "Draft" ? "Pack saved as draft!" : "Pack published successfully!",
+      });
+      
+      // Small delay to show completion message
+      setTimeout(() => {
+        alert(
+          status === "Draft"
+            ? `Pack "${formData.name}" saved as draft!`
+            : `Pack "${formData.name}" published successfully!`
+        );
+        navigate("/admin/library?tab=packs");
+      }, 500);
+    } catch (error) {
+      console.error("Error creating pack:", error);
+      alert(
+        error instanceof Error
+          ? error.message
+          : "An unexpected error occurred while creating the pack"
+      );
+    } finally {
       setIsSubmitting(false);
-      alert(`Pack "${formData.name}" published successfully!`);
-      navigate("/admin/library?tab=packs");
-    }, 1000);
+      // Reset progress after navigation or error
+      setTimeout(() => {
+        setUploadProgress({
+          step: "",
+          current: 0,
+          total: 0,
+          percentage: 0,
+          message: "",
+        });
+      }, 500);
+    }
   };
 
   return (
@@ -245,6 +480,16 @@ export default function CreatePackPage() {
           <p className="text-muted-foreground mt-1">Create a new sample pack for your library</p>
         </div>
       </div>
+
+      {/* Loading State */}
+      {isLoadingData && (
+        <Alert>
+          <Loader2 className="h-4 w-4 animate-spin" />
+          <AlertDescription className="ml-2">
+            Loading creators, genres, and categories...
+          </AlertDescription>
+        </Alert>
+      )}
 
       <div className="grid gap-6 lg:grid-cols-3">
         {/* Main Form - Left Side (2 columns) */}
@@ -286,35 +531,51 @@ export default function CreatePackPage() {
                 <Label>Genre(s) * (multi-select)</Label>
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
-                    <Button variant="outline" className="w-full justify-start">
-                      {formData.genres.length > 0 ? formData.genres.join(", ") : "Select genres..."}
+                    <Button 
+                      variant="outline" 
+                      className="w-full justify-start"
+                      disabled={isLoadingData}
+                    >
+                      {isLoadingData ? (
+                        <>
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                          Loading...
+                        </>
+                      ) : formData.genres.length > 0 ? (
+                        getSelectedGenreNames()
+                      ) : (
+                        "Select genres..."
+                      )}
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent className="w-full">
                     <DropdownMenuLabel>Select Genres (multi-select)</DropdownMenuLabel>
                     <DropdownMenuSeparator />
-                    {GENRES.map(genre => (
+                    {genres.map(genre => (
                       <DropdownMenuCheckboxItem
-                        key={genre}
-                        checked={formData.genres.includes(genre)}
-                        onCheckedChange={() => handleGenreToggle(genre)}
+                        key={genre.id}
+                        checked={formData.genres.includes(genre.id)}
+                        onCheckedChange={() => handleGenreToggle(genre.id)}
                       >
-                        {genre}
+                        {genre.name}
                       </DropdownMenuCheckboxItem>
                     ))}
                   </DropdownMenuContent>
                 </DropdownMenu>
                 {formData.genres.length > 0 && (
                   <div className="flex flex-wrap gap-2 mt-2">
-                    {formData.genres.map(genre => (
-                      <Badge key={genre} variant="outline" className="gap-1">
-                        {genre}
-                        <X
-                          className="h-3 w-3 cursor-pointer"
-                          onClick={() => handleGenreToggle(genre)}
-                        />
-                      </Badge>
-                    ))}
+                    {formData.genres.map(genreId => {
+                      const genre = genres.find(g => g.id === genreId);
+                      return genre ? (
+                        <Badge key={genreId} variant="outline" className="gap-1">
+                          {genre.name}
+                          <X
+                            className="h-3 w-3 cursor-pointer"
+                            onClick={() => handleGenreToggle(genreId)}
+                          />
+                        </Badge>
+                      ) : null;
+                    })}
                   </div>
                 )}
               </div>
@@ -324,19 +585,30 @@ export default function CreatePackPage() {
                 <Label>Category *</Label>
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
-                    <Button variant="outline" className="w-full justify-start">
-                      {formData.category || "Select category..."}
+                    <Button 
+                      variant="outline" 
+                      className="w-full justify-start"
+                      disabled={isLoadingData}
+                    >
+                      {isLoadingData ? (
+                        <>
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                          Loading...
+                        </>
+                      ) : (
+                        getSelectedCategoryName() || "Select category..."
+                      )}
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent>
                     <DropdownMenuLabel>Select Category</DropdownMenuLabel>
                     <DropdownMenuSeparator />
-                    {CATEGORIES.map(category => (
+                    {categories.map(category => (
                       <DropdownMenuItem
-                        key={category}
-                        onClick={() => handleInputChange("category", category)}
+                        key={category.id}
+                        onClick={() => handleInputChange("category", category.id)}
                       >
-                        {category}
+                        {category.name}
                       </DropdownMenuItem>
                     ))}
                   </DropdownMenuContent>
@@ -385,19 +657,30 @@ export default function CreatePackPage() {
                 <Label>Assign Creator *</Label>
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
-                    <Button variant="outline" className="w-full justify-start">
-                      {formData.creator || "Select creator..."}
+                    <Button 
+                      variant="outline" 
+                      className="w-full justify-start"
+                      disabled={isLoadingData}
+                    >
+                      {isLoadingData ? (
+                        <>
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                          Loading...
+                        </>
+                      ) : (
+                        getSelectedCreatorName() || "Select creator..."
+                      )}
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent className="w-full">
                     <DropdownMenuLabel>Select Creator</DropdownMenuLabel>
                     <DropdownMenuSeparator />
-                    {CREATORS.map(creator => (
+                    {creators.map(creator => (
                       <DropdownMenuItem
-                        key={creator}
-                        onClick={() => handleInputChange("creator", creator)}
+                        key={creator.id}
+                        onClick={() => handleInputChange("creator", creator.id)}
                       >
-                        {creator}
+                        {creator.name}
                       </DropdownMenuItem>
                     ))}
                   </DropdownMenuContent>
@@ -504,9 +787,6 @@ export default function CreatePackPage() {
                                 </DropdownMenuItem>
                                 <DropdownMenuItem onClick={() => handleSampleChange(sample.id, "type", "One-shot")}>
                                   One-shot
-                                </DropdownMenuItem>
-                                <DropdownMenuItem onClick={() => handleSampleChange(sample.id, "type", "Stem")}>
-                                  Stem
                                 </DropdownMenuItem>
                               </DropdownMenuContent>
                             </DropdownMenu>
@@ -707,6 +987,7 @@ export default function CreatePackPage() {
                   className="w-full"
                   onClick={() => {
                     setCoverPreview(null);
+                    setCoverFile(null);
                     setFormData(prev => ({ ...prev, coverUrl: "" }));
                   }}
                 >
@@ -749,6 +1030,48 @@ export default function CreatePackPage() {
         </div>
       </div>
 
+      {/* Upload Progress Alert */}
+      {uploadProgress.message && (
+        <Alert className="border-blue-200 bg-blue-50">
+          <div className="space-y-3 w-full">
+            <div className="flex items-center gap-3">
+              {uploadProgress.step !== "Complete" ? (
+                <Loader2 className="h-5 w-5 animate-spin text-blue-600" />
+              ) : (
+                <div className="h-5 w-5 rounded-full bg-green-500 flex items-center justify-center">
+                  <svg className="h-3 w-3 text-white" fill="none" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" viewBox="0 0 24 24" stroke="currentColor">
+                    <path d="M5 13l4 4L19 7"></path>
+                  </svg>
+                </div>
+              )}
+              <div className="flex-1">
+                <div className="flex items-center justify-between mb-1">
+                  <p className="text-sm font-medium text-blue-900">
+                    {uploadProgress.step} {uploadProgress.percentage > 0 && `(${uploadProgress.percentage}%)`}
+                  </p>
+                  {uploadProgress.total > 0 && (
+                    <span className="text-xs text-blue-700">
+                      {uploadProgress.current} / {uploadProgress.total}
+                    </span>
+                  )}
+                </div>
+                <p className="text-xs text-blue-700">{uploadProgress.message}</p>
+              </div>
+            </div>
+            
+            {/* Progress Bar */}
+            {uploadProgress.percentage > 0 && (
+              <div className="w-full bg-blue-100 rounded-full h-2 overflow-hidden">
+                <div 
+                  className="bg-blue-600 h-2 rounded-full transition-all duration-300 ease-out"
+                  style={{ width: `${uploadProgress.percentage}%` }}
+                />
+              </div>
+            )}
+          </div>
+        </Alert>
+      )}
+
       {/* Action Buttons */}
       <div className="flex justify-between items-center mt-6 p-4 border-t bg-muted/30 rounded-lg">
         <Button
@@ -765,17 +1088,31 @@ export default function CreatePackPage() {
             type="button"
             variant="outline"
             onClick={handleSaveDraft}
-            disabled={isSubmitting}
+            disabled={isSubmitting || isLoadingData}
           >
-            Save Draft
+            {isSubmitting ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Saving...
+              </>
+            ) : (
+              "Save Draft"
+            )}
           </Button>
           <Button
             type="button"
             onClick={handlePublish}
-            disabled={isSubmitting}
+            disabled={isSubmitting || isLoadingData}
             className="bg-green-600 hover:bg-green-700"
           >
-            Publish Pack
+            {isSubmitting ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Publishing...
+              </>
+            ) : (
+              "Publish Pack"
+            )}
           </Button>
         </div>
       </div>

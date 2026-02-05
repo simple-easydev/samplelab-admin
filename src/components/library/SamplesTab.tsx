@@ -34,9 +34,11 @@ interface Sample {
   genre: string;
   bpm: number | null;
   key: string | null;
-  type: "Loop" | "One-shot" | "Stem";
+  type: "Loop" | "One-shot"; // NOTE: 'Stem' is NOT a type - stems are bundles attached to samples
   downloads: number;
   status: "Active" | "Disabled";
+  hasStems: boolean; // Does this sample have stems bundle?
+  stemsCount?: number; // Number of stem files (if hasStems = true)
   createdAt: string;
 }
 
@@ -435,6 +437,7 @@ export function SamplesTab({
                 <TableHead>Creator</TableHead>
                 <TableHead>BPM / Key</TableHead>
                 <TableHead>Type</TableHead>
+                <TableHead>Stems</TableHead>
                 <TableHead className="text-right">Downloads</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead className="text-right">Actions</TableHead>
@@ -443,7 +446,7 @@ export function SamplesTab({
             <TableBody>
               {filteredAndSortedSamples.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
+                  <TableCell colSpan={9} className="text-center py-8 text-muted-foreground">
                     No samples found
                   </TableCell>
                 </TableRow>
@@ -471,6 +474,16 @@ export function SamplesTab({
                     </TableCell>
                     <TableCell>
                       <Badge variant="outline">{sample.type}</Badge>
+                    </TableCell>
+                    <TableCell>
+                      {sample.hasStems ? (
+                        <Badge variant="secondary" className="gap-1">
+                          <Music className="h-3 w-3" />
+                          {sample.stemsCount || 0} files
+                        </Badge>
+                      ) : (
+                        <span className="text-muted-foreground text-xs">—</span>
+                      )}
                     </TableCell>
                     <TableCell className="text-right">
                       {sample.downloads.toLocaleString()}

@@ -139,6 +139,8 @@ const mockSamples = [
     type: "One-shot" as const,
     downloads: 1240,
     status: "Active" as const,
+    hasStems: false,
+    stemsCount: 0,
     createdAt: "2024-01-15",
   },
   {
@@ -152,6 +154,8 @@ const mockSamples = [
     type: "One-shot" as const,
     downloads: 980,
     status: "Active" as const,
+    hasStems: false,
+    stemsCount: 0,
     createdAt: "2024-01-20",
   },
   {
@@ -165,6 +169,8 @@ const mockSamples = [
     type: "Loop" as const,
     downloads: 856,
     status: "Active" as const,
+    hasStems: true,
+    stemsCount: 2,
     createdAt: "2024-02-01",
   },
   {
@@ -178,6 +184,8 @@ const mockSamples = [
     type: "Loop" as const,
     downloads: 743,
     status: "Disabled" as const,
+    hasStems: true,
+    stemsCount: 4,
     createdAt: "2024-01-16",
   },
   {
@@ -191,19 +199,23 @@ const mockSamples = [
     type: "One-shot" as const,
     downloads: 621,
     status: "Active" as const,
+    hasStems: false,
+    stemsCount: 0,
     createdAt: "2024-01-28",
   },
   {
     id: 6,
-    name: "Vocal Chop Stem",
+    name: "Vocal Chop Loop",
     pack: { id: 5, name: "Vocal Chops Collection" },
     creator: "Sound Wave",
     genre: "Hip Hop",
     bpm: 120,
     key: "D",
-    type: "Stem" as const,
+    type: "Loop" as const,
     downloads: 543,
     status: "Active" as const,
+    hasStems: true,
+    stemsCount: 3,
     createdAt: "2024-01-10",
   },
   {
@@ -217,6 +229,8 @@ const mockSamples = [
     type: "Loop" as const,
     downloads: 487,
     status: "Active" as const,
+    hasStems: false,
+    stemsCount: 0,
     createdAt: "2024-01-21",
   },
   {
@@ -230,6 +244,8 @@ const mockSamples = [
     type: "One-shot" as const,
     downloads: 392,
     status: "Disabled" as const,
+    hasStems: false,
+    stemsCount: 0,
     createdAt: "2024-01-29",
   },
   // Example: Sample from single-sample pack (Pack-First Architecture)
@@ -244,6 +260,8 @@ const mockSamples = [
     type: "One-shot" as const,
     downloads: 156,
     status: "Active" as const,
+    hasStems: false,
+    stemsCount: 0,
     createdAt: "2024-02-05",
   },
 ];
@@ -299,13 +317,7 @@ export default function LibraryPage() {
 
         {/* Packs Tab */}
         <TabsContent value="packs" className="space-y-4">
-          <PacksTab
-            packs={mockPacks}
-            uniqueCreators={uniqueCreators}
-            uniqueGenres={uniqueGenres}
-            uniqueCategories={uniqueCategories}
-            uniqueTags={uniqueTags}
-          />
+          <PacksTab />
         </TabsContent>
 
         {/* Samples Tab */}
