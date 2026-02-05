@@ -22,7 +22,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 
-type PackStatusFilter = "all" | "Published" | "Disabled";
+type PackStatusFilter = "all" | "Draft" | "Published" | "Disabled";
 type SortOption = "a-z" | "newest" | "most-downloaded";
 
 interface Pack {
@@ -34,7 +34,8 @@ interface Pack {
   tags: string[];
   samples: number;
   downloads: number;
-  status: "Published" | "Disabled";
+  status: "Draft" | "Published" | "Disabled";
+  coverUrl?: string;
   createdAt: string;
 }
 
@@ -233,6 +234,9 @@ export function PacksTab({
                 <DropdownMenuItem onClick={() => setStatusFilter("all")}>
                   All Status
                 </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setStatusFilter("Draft")}>
+                  Draft (not visible to users)
+                </DropdownMenuItem>
                 <DropdownMenuItem onClick={() => setStatusFilter("Published")}>
                   Published (live on site)
                 </DropdownMenuItem>
@@ -326,25 +330,39 @@ export function PacksTab({
         <Table>
           <TableHeader>
             <TableRow>
+              <TableHead className="w-20">Cover</TableHead>
               <TableHead>Pack Name</TableHead>
               <TableHead>Creator</TableHead>
               <TableHead className="text-right">Samples</TableHead>
+              <TableHead>Genre</TableHead>
               <TableHead className="text-right">Downloads</TableHead>
               <TableHead>Status</TableHead>
-              <TableHead>Created</TableHead>
               <TableHead className="text-right">Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {filteredAndSortedPacks.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
+                <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
                   No packs found
                 </TableCell>
               </TableRow>
             ) : (
               filteredAndSortedPacks.map((pack) => (
                 <TableRow key={pack.id}>
+                  <TableCell>
+                    <div className="w-16 h-16 bg-gradient-to-br from-blue-500 to-purple-500 rounded-lg flex items-center justify-center overflow-hidden">
+                      {pack.coverUrl ? (
+                        <img 
+                          src={pack.coverUrl} 
+                          alt={pack.name}
+                          className="w-full h-full object-cover"
+                        />
+                      ) : (
+                        <Package className="h-8 w-8 text-white" />
+                      )}
+                    </div>
+                  </TableCell>
                   <TableCell className="font-medium">
                     <Link 
                       to={`/admin/library/packs/${pack.id}`}
@@ -355,18 +373,24 @@ export function PacksTab({
                   </TableCell>
                   <TableCell>{pack.creator}</TableCell>
                   <TableCell className="text-right">{pack.samples}</TableCell>
+                  <TableCell>
+                    <Badge variant="outline">{pack.genre}</Badge>
+                  </TableCell>
                   <TableCell className="text-right">
                     {pack.downloads.toLocaleString()}
                   </TableCell>
                   <TableCell>
                     <Badge 
-                      variant={pack.status === "Published" ? "default" : "destructive"}
+                      variant={
+                        pack.status === "Published" 
+                          ? "default" 
+                          : pack.status === "Draft"
+                          ? "secondary"
+                          : "destructive"
+                      }
                     >
                       {pack.status}
                     </Badge>
-                  </TableCell>
-                  <TableCell className="text-muted-foreground text-sm">
-                    {new Date(pack.createdAt).toLocaleDateString()}
                   </TableCell>
                   <TableCell className="text-right">
                     <DropdownMenu>
@@ -392,10 +416,15 @@ export function PacksTab({
                             <Ban className="mr-2 h-4 w-4" />
                             Disable Pack
                           </DropdownMenuItem>
-                        ) : (
+                        ) : pack.status === "Draft" ? (
                           <DropdownMenuItem className="text-green-600">
                             <Check className="mr-2 h-4 w-4" />
                             Publish Pack
+                          </DropdownMenuItem>
+                        ) : (
+                          <DropdownMenuItem className="text-green-600">
+                            <Check className="mr-2 h-4 w-4" />
+                            Re-publish Pack
                           </DropdownMenuItem>
                         )}
                         <DropdownMenuItem className="text-destructive">

@@ -21,6 +21,7 @@ const mockPacks = [
     samples: 45,
     downloads: 450,
     status: "Published" as const,
+    coverUrl: "https://images.unsplash.com/photo-1511379938547-c1f69419868d?w=300&h=300&fit=crop",
     createdAt: "2024-01-15",
   },
   {
@@ -33,6 +34,7 @@ const mockPacks = [
     samples: 32,
     downloads: 380,
     status: "Published" as const,
+    coverUrl: "https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=300&h=300&fit=crop",
     createdAt: "2024-01-20",
   },
   {
@@ -45,6 +47,7 @@ const mockPacks = [
     samples: 28,
     downloads: 320,
     status: "Published" as const,
+    coverUrl: "https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=300&h=300&fit=crop",
     createdAt: "2024-02-01",
   },
   {
@@ -57,6 +60,7 @@ const mockPacks = [
     samples: 38,
     downloads: 285,
     status: "Published" as const,
+    coverUrl: "https://images.unsplash.com/photo-1571330735066-03aaa9429d89?w=300&h=300&fit=crop",
     createdAt: "2024-01-28",
   },
   {
@@ -67,8 +71,9 @@ const mockPacks = [
     category: "Vocals",
     tags: ["Vocals", "Chops", "Processed"],
     samples: 24,
-    downloads: 240,
-    status: "Disabled" as const,
+    downloads: 0,  // Draft packs have 0 downloads
+    status: "Draft" as const,
+    // No coverUrl - will show default icon
     createdAt: "2024-01-10",
   },
   {
@@ -81,6 +86,7 @@ const mockPacks = [
     samples: 52,
     downloads: 198,
     status: "Disabled" as const,
+    coverUrl: "https://images.unsplash.com/photo-1598488035139-bdbb2231ce04?w=300&h=300&fit=crop",
     createdAt: "2024-02-03",
   },
   // Example: Single-sample pack (Pack-First Architecture)
@@ -94,7 +100,22 @@ const mockPacks = [
     samples: 1,  // Single sample, still a pack
     downloads: 156,
     status: "Published" as const,
+    coverUrl: "https://images.unsplash.com/photo-1514320291840-2e0a9bf2a9ae?w=300&h=300&fit=crop",
     createdAt: "2024-02-05",
+  },
+  // Example: Draft pack (not visible to users)
+  {
+    id: 8,
+    name: "Ambient Textures Vol. 2",
+    creator: "Producer Mike",
+    genre: "Ambient",
+    category: "Atmospheres",
+    tags: ["Ambient", "Pad", "Texture"],
+    samples: 18,
+    downloads: 0,  // Draft packs have 0 downloads
+    status: "Draft" as const,
+    // No coverUrl - will show default icon
+    createdAt: "2024-02-06",
   },
 ];
 
