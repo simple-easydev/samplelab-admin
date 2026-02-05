@@ -1,28 +1,96 @@
+"use client";
+
+import { useState } from "react";
+import { StatsCardSkeleton, CardSkeleton } from "@/components/LoadingSkeleton";
+
 export default function AnalyticsPage() {
+  const [loading] = useState(false); // Will be true when we add real data fetching
+
   return (
     <div className="space-y-6">
       <div>
         <h1 className="text-3xl font-bold text-gray-900">Analytics</h1>
         <p className="text-gray-600 mt-1">
-          Platform insights and metrics
+          View platform metrics and performance insights
         </p>
       </div>
 
-      <div className="bg-white rounded-lg shadow border border-gray-200 p-12">
-        <div className="text-center">
-          <div className="text-6xl mb-4">📊</div>
-          <h2 className="text-2xl font-bold text-gray-900 mb-2">
-            Analytics Dashboard Coming Soon
-          </h2>
-          <p className="text-gray-600 mb-6 max-w-md mx-auto">
-            Advanced analytics and reporting features will be available in future updates.
-          </p>
-          <div className="inline-flex items-center gap-2 bg-blue-100 text-blue-700 px-4 py-2 rounded-lg">
-            <span>🚧</span>
-            <span className="text-sm font-medium">Under Development</span>
-          </div>
-        </div>
+      {/* Quick Stats */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        {loading ? (
+          <>
+            <StatsCardSkeleton />
+            <StatsCardSkeleton />
+            <StatsCardSkeleton />
+          </>
+        ) : (
+          <>
+            <div className="bg-white rounded-lg shadow p-6 border border-gray-200">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-sm font-medium text-gray-600">Total Revenue</h3>
+                <span className="text-2xl">💰</span>
+              </div>
+              <p className="text-3xl font-bold text-gray-900">$0</p>
+              <p className="text-sm text-green-600 mt-2">↑ 0% from last month</p>
+            </div>
+
+            <div className="bg-white rounded-lg shadow p-6 border border-gray-200">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-sm font-medium text-gray-600">Active Users</h3>
+                <span className="text-2xl">📊</span>
+              </div>
+              <p className="text-3xl font-bold text-gray-900">0</p>
+              <p className="text-sm text-gray-500 mt-2">Last 30 days</p>
+            </div>
+
+            <div className="bg-white rounded-lg shadow p-6 border border-gray-200">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-sm font-medium text-gray-600">Conversion Rate</h3>
+                <span className="text-2xl">📈</span>
+              </div>
+              <p className="text-3xl font-bold text-gray-900">0%</p>
+              <p className="text-sm text-gray-500 mt-2">Trials to paid</p>
+            </div>
+          </>
+        )}
       </div>
+
+      {/* Charts Section */}
+      {loading ? (
+        <>
+          <CardSkeleton />
+          <CardSkeleton />
+        </>
+      ) : (
+        <>
+          <div className="bg-white rounded-lg shadow p-6 border border-gray-200">
+            <h2 className="text-xl font-bold text-gray-900 mb-4">Revenue Trend</h2>
+            <div className="text-center py-12 text-gray-500">
+              <div className="text-6xl mb-4">📊</div>
+              <p className="text-lg font-medium mb-2">Analytics Dashboard Coming Soon</p>
+              <p className="text-sm">
+                Charts and detailed analytics will be available in a future update
+              </p>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="bg-white rounded-lg shadow p-6 border border-gray-200">
+              <h2 className="text-xl font-bold text-gray-900 mb-4">Top Samples</h2>
+              <div className="text-center py-8 text-gray-500">
+                <p>Most downloaded samples will appear here</p>
+              </div>
+            </div>
+
+            <div className="bg-white rounded-lg shadow p-6 border border-gray-200">
+              <h2 className="text-xl font-bold text-gray-900 mb-4">User Growth</h2>
+              <div className="text-center py-8 text-gray-500">
+                <p>User growth chart will appear here</p>
+              </div>
+            </div>
+          </div>
+        </>
+      )}
     </div>
   );
 }

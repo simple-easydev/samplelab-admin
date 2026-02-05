@@ -1,6 +1,6 @@
 # SampleLab Admin Panel
 
-A modern admin panel built with Next.js 16, TypeScript, Tailwind CSS, and Supabase.
+A modern admin panel built with **React 18**, **Vite**, TypeScript, Tailwind CSS, and Supabase.
 
 ## Features
 
@@ -9,15 +9,16 @@ A modern admin panel built with Next.js 16, TypeScript, Tailwind CSS, and Supaba
 - 📊 Analytics dashboard
 - 🔐 Admin authentication with Row Level Security
 - 🎨 Modern UI with Tailwind CSS
-- 🚀 Built with Next.js App Router
+- 🚀 React + Vite (no Next.js)
 - 📱 Fully responsive design
 
 ## Tech Stack
 
-- **Framework**: Next.js 15+ (App Router)
+- **Frontend**: React 18, Vite 5, React Router 6
 - **Language**: TypeScript
 - **Styling**: Tailwind CSS
-- **Database & Auth**: Supabase with @supabase/ssr
+- **Database & Auth**: Supabase (@supabase/supabase-js)
+- **API**: Express server (in `server/`) for admin and auth routes
 - **Linting**: ESLint
 - **Formatting**: Prettier
 
@@ -42,13 +43,13 @@ npm install
 
 ### 2. Environment Setup
 
-The `.env.local` file has been created with your Supabase credentials. If you need to update them:
+Copy `.env.example` to `.env` and set:
 
 1. Go to your Supabase project dashboard
 2. Navigate to Settings > API
 3. Copy the following values:
-   - Project URL → `NEXT_PUBLIC_SUPABASE_URL`
-   - anon/public key → `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+   - Project URL → `VITE_SUPABASE_URL`
+   - anon/public key → `VITE_SUPABASE_ANON_KEY`
    - service_role key → `SUPABASE_SERVICE_ROLE_KEY`
 
 **Note**: Keep the `SUPABASE_SERVICE_ROLE_KEY` secret and never expose it in client-side code!
@@ -134,9 +135,11 @@ admin/
 
 ## Available Scripts
 
-- `npm run dev` - Start development server
+- `npm run dev` - Start Vite dev server (port 3000)
+- `npm run server` - Start Express API server (port 3001)
+- `npm run dev:all` - Run both dev server and API
 - `npm run build` - Build for production
-- `npm run start` - Start production server
+- `npm run preview` - Preview production build
 - `npm run lint` - Run ESLint
 - `npm run format` - Format code with Prettier
 
@@ -179,8 +182,8 @@ admin/
 
 | Variable | Description | Required |
 |----------|-------------|----------|
-| `NEXT_PUBLIC_SUPABASE_URL` | Your Supabase project URL | Yes |
-| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Supabase anonymous key | Yes |
+| `VITE_SUPABASE_URL` | Your Supabase project URL | Yes |
+| `VITE_SUPABASE_ANON_KEY` | Supabase anonymous key | Yes |
 | `SUPABASE_SERVICE_ROLE_KEY` | Supabase service role key | Yes |
 
 ## Troubleshooting
