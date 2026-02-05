@@ -1,11 +1,19 @@
 import { Link, useLocation } from "react-router-dom";
+import { LayoutDashboard, Music, Users, Shield, TrendingUp, Settings } from "lucide-react";
+import type { LucideIcon } from "lucide-react";
 
-const navigation = [
-  { name: "Dashboard", href: "/admin", icon: "📊" },
-  { name: "Samples", href: "/admin/samples", icon: "🎵" },
-  { name: "Customers", href: "/admin/customers", icon: "👥" },
-  { name: "Users", href: "/admin/users", icon: "🔐" },
-  { name: "Analytics", href: "/admin/analytics", icon: "📈" },
+interface NavItem {
+  name: string;
+  href: string;
+  icon: LucideIcon;
+}
+
+const navigation: NavItem[] = [
+  { name: "Dashboard", href: "/admin", icon: LayoutDashboard },
+  { name: "Samples", href: "/admin/samples", icon: Music },
+  { name: "Customers", href: "/admin/customers", icon: Users },
+  { name: "Users", href: "/admin/users", icon: Shield },
+  { name: "Analytics", href: "/admin/analytics", icon: TrendingUp },
 ];
 
 export default function AdminSidebar() {
@@ -16,7 +24,7 @@ export default function AdminSidebar() {
     <div className="w-64 bg-gray-900 text-white min-h-screen">
       <div className="p-6">
         <div className="flex items-center gap-2 mb-8">
-          <div className="text-2xl">🎛️</div>
+          <Settings className="h-8 w-8 text-blue-400" />
           <div>
             <h1 className="text-xl font-bold">SampleLab</h1>
             <p className="text-xs text-gray-400">Admin Panel</p>
@@ -27,6 +35,7 @@ export default function AdminSidebar() {
           {navigation.map((item) => {
             const isActive =
               pathname === item.href || (item.href !== "/admin" && pathname.startsWith(item.href));
+            const Icon = item.icon;
             return (
               <Link
                 key={item.name}
@@ -35,7 +44,7 @@ export default function AdminSidebar() {
                   isActive ? "bg-blue-600 text-white" : "text-gray-300 hover:bg-gray-800 hover:text-white"
                 }`}
               >
-                <span className="text-xl">{item.icon}</span>
+                <Icon className="h-5 w-5" />
                 <span className="font-medium">{item.name}</span>
               </Link>
             );

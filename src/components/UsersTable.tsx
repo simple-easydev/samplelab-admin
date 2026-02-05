@@ -1,5 +1,11 @@
 import { useState } from "react";
+import { Shield, Eye } from "lucide-react";
 import type { User } from "@/types";
+import { Input } from "@/components/ui/input";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
 
 export default function UsersTable({ users }: { users: User[] }) {
   const [searchQuery, setSearchQuery] = useState("");
@@ -12,87 +18,73 @@ export default function UsersTable({ users }: { users: User[] }) {
 
   return (
     <>
-      <div className="bg-white rounded-lg shadow border border-gray-200 p-4">
-        <input
+      <Card className="p-4">
+        <Input
           type="text"
           placeholder="Search by email or name..."
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
-          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
         />
-      </div>
+      </Card>
 
       {filteredUsers.length === 0 ? (
-        <div className="bg-white rounded-lg shadow border border-gray-200 overflow-hidden">
-          <div className="p-12 text-center text-gray-500">
-            <div className="text-4xl mb-4">🔐</div>
+        <Card className="overflow-hidden">
+          <div className="p-12 text-center text-muted-foreground">
+            <Shield className="h-12 w-12 mx-auto mb-4" />
             <p className="text-lg font-medium mb-2">No admin users found</p>
             <p className="text-sm">
-              {searchQuery ? "Try adjusting your search query" : "Admin users will appear here once created"}
+              {searchQuery
+                ? "Try adjusting your search query"
+                : "Admin users will appear here once created"}
             </p>
           </div>
-        </div>
+        </Card>
       ) : (
-        <div className="bg-white rounded-lg shadow border border-gray-200 overflow-hidden">
-          <table className="w-full">
-            <thead className="bg-gray-50 border-b border-gray-200">
-              <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  User
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Email
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Role
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Created
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Actions
-                </th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-200">
+        <Card>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>User</TableHead>
+                <TableHead>Email</TableHead>
+                <TableHead>Role</TableHead>
+                <TableHead>Created</TableHead>
+                <TableHead>Actions</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
               {filteredUsers.map((user) => (
-                <tr key={user.id} className="hover:bg-gray-50 transition-colors">
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="flex items-center">
-                      <div className="w-10 h-10 bg-blue-600 rounded-full flex items-center justify-center text-white font-bold">
+                <TableRow key={user.id}>
+                  <TableCell>
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 bg-primary rounded-full flex items-center justify-center text-primary-foreground font-bold">
                         {user.name?.[0]?.toUpperCase() || user.email[0].toUpperCase()}
                       </div>
-                      <div className="ml-4">
-                        <div className="text-sm font-medium text-gray-900">{user.name || "N/A"}</div>
-                        {user.is_admin && (
-                          <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-red-100 text-red-800">
-                            Admin
-                          </span>
-                        )}
+                      <div>
+                        <div className="font-medium">{user.name || "N/A"}</div>
+                        {user.is_admin && <Badge variant="destructive" className="mt-1">Admin</Badge>}
                       </div>
                     </div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{user.email}</td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <span
-                      className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                        user.is_admin ? "bg-red-100 text-red-800" : "bg-gray-100 text-gray-800"
-                      }`}
-                    >
+                  </TableCell>
+                  <TableCell>{user.email}</TableCell>
+                  <TableCell>
+                    <Badge variant={user.is_admin ? "destructive" : "secondary"}>
                       {user.is_admin ? "Admin" : "User"}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                    </Badge>
+                  </TableCell>
+                  <TableCell className="text-muted-foreground">
                     {new Date(user.created_at).toLocaleDateString()}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    <button className="text-blue-600 hover:text-blue-900 font-medium">View Details</button>
-                  </td>
-                </tr>
+                  </TableCell>
+                  <TableCell>
+                    <Button variant="ghost" size="sm">
+                      <Eye className="mr-2 h-4 w-4" />
+                      View Details
+                    </Button>
+                  </TableCell>
+                </TableRow>
               ))}
-            </tbody>
-          </table>
-        </div>
+            </TableBody>
+          </Table>
+        </Card>
       )}
     </>
   );

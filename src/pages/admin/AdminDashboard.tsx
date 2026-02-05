@@ -1,7 +1,10 @@
 import { Link } from "react-router-dom";
 import { Suspense } from "react";
+import { Shield, Users, Star, Music, Download, Upload, UserPlus } from "lucide-react";
 import { StatsCardSkeleton } from "@/components/LoadingSkeleton";
 import { useAdminStats } from "@/hooks/useAdminData";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 
 function DashboardStats() {
   const { stats, isLoading, isError } = useAdminStats();
@@ -18,50 +21,60 @@ function DashboardStats() {
   }
   return (
     <>
-      <div className="bg-white rounded-lg shadow p-6 border border-gray-200">
-        <div className="flex items-center justify-between mb-4">
-          <h3 className="text-sm font-medium text-gray-600">Admin Users</h3>
-          <span className="text-2xl">🔐</span>
-        </div>
-        <p className="text-3xl font-bold text-gray-900">{stats.total_users ?? 0}</p>
-        <p className="text-sm text-gray-500 mt-2">System access</p>
-      </div>
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+          <CardTitle className="text-sm font-medium">Admin Users</CardTitle>
+          <Shield className="h-4 w-4 text-muted-foreground" />
+        </CardHeader>
+        <CardContent>
+          <div className="text-2xl font-bold">{stats.total_users ?? 0}</div>
+          <p className="text-xs text-muted-foreground">System access</p>
+        </CardContent>
+      </Card>
 
-      <div className="bg-white rounded-lg shadow p-6 border border-gray-200">
-        <div className="flex items-center justify-between mb-4">
-          <h3 className="text-sm font-medium text-gray-600">Customers</h3>
-          <span className="text-2xl">👥</span>
-        </div>
-        <p className="text-3xl font-bold text-gray-900">{stats.total_customers ?? 0}</p>
-        <p className="text-sm text-green-600 mt-2">↑ Active accounts</p>
-      </div>
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+          <CardTitle className="text-sm font-medium">Customers</CardTitle>
+          <Users className="h-4 w-4 text-muted-foreground" />
+        </CardHeader>
+        <CardContent>
+          <div className="text-2xl font-bold">{stats.total_customers ?? 0}</div>
+          <p className="text-xs text-green-600">↑ Active accounts</p>
+        </CardContent>
+      </Card>
 
-      <div className="bg-white rounded-lg shadow p-6 border border-gray-200">
-        <div className="flex items-center justify-between mb-4">
-          <h3 className="text-sm font-medium text-gray-600">Subscriptions</h3>
-          <span className="text-2xl">⭐</span>
-        </div>
-        <p className="text-3xl font-bold text-gray-900">{stats.active_subscriptions ?? 0}</p>
-        <p className="text-sm text-green-600 mt-2">↑ Paid members</p>
-      </div>
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+          <CardTitle className="text-sm font-medium">Subscriptions</CardTitle>
+          <Star className="h-4 w-4 text-muted-foreground" />
+        </CardHeader>
+        <CardContent>
+          <div className="text-2xl font-bold">{stats.active_subscriptions ?? 0}</div>
+          <p className="text-xs text-green-600">↑ Paid members</p>
+        </CardContent>
+      </Card>
 
-      <div className="bg-white rounded-lg shadow p-6 border border-gray-200">
-        <div className="flex items-center justify-between mb-4">
-          <h3 className="text-sm font-medium text-gray-600">Samples</h3>
-          <span className="text-2xl">🎵</span>
-        </div>
-        <p className="text-3xl font-bold text-gray-900">{stats.total_samples ?? 0}</p>
-        <p className="text-sm text-blue-600 mt-2">In library</p>
-      </div>
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+          <CardTitle className="text-sm font-medium">Samples</CardTitle>
+          <Music className="h-4 w-4 text-muted-foreground" />
+        </CardHeader>
+        <CardContent>
+          <div className="text-2xl font-bold">{stats.total_samples ?? 0}</div>
+          <p className="text-xs text-blue-600">In library</p>
+        </CardContent>
+      </Card>
 
-      <div className="bg-white rounded-lg shadow p-6 border border-gray-200">
-        <div className="flex items-center justify-between mb-4">
-          <h3 className="text-sm font-medium text-gray-600">Downloads</h3>
-          <span className="text-2xl">📥</span>
-        </div>
-        <p className="text-3xl font-bold text-gray-900">{stats.total_downloads ?? 0}</p>
-        <p className="text-sm text-purple-600 mt-2">All time</p>
-      </div>
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+          <CardTitle className="text-sm font-medium">Downloads</CardTitle>
+          <Download className="h-4 w-4 text-muted-foreground" />
+        </CardHeader>
+        <CardContent>
+          <div className="text-2xl font-bold">{stats.total_downloads ?? 0}</div>
+          <p className="text-xs text-purple-600">All time</p>
+        </CardContent>
+      </Card>
     </>
   );
 }
@@ -70,8 +83,8 @@ export default function AdminDashboard() {
   return (
     <div className="space-y-8">
       <div>
-        <h1 className="text-3xl font-bold text-gray-900 mb-2">Welcome to Admin Dashboard</h1>
-        <p className="text-gray-600">Manage your SampleLab platform from here.</p>
+        <h1 className="text-3xl font-bold mb-2">Welcome to Admin Dashboard</h1>
+        <p className="text-muted-foreground">Manage your SampleLab platform from here.</p>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
@@ -90,40 +103,45 @@ export default function AdminDashboard() {
         </Suspense>
       </div>
 
-      <div className="bg-white rounded-lg shadow p-6 border border-gray-200">
-        <h2 className="text-xl font-bold text-gray-900 mb-4">Quick Actions</h2>
-        <div className="flex gap-4">
-          <Link
-            to="/admin/samples"
-            className="inline-flex items-center gap-2 bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition-colors"
-          >
-            <span>📤</span>
-            <span>Upload Samples</span>
-          </Link>
-          <Link
-            to="/admin/customers"
-            className="inline-flex items-center gap-2 bg-gray-600 text-white px-6 py-3 rounded-lg hover:bg-gray-700 transition-colors"
-          >
-            <span>👥</span>
-            <span>View All Customers</span>
-          </Link>
-          <Link
-            to="/admin/users"
-            className="inline-flex items-center gap-2 bg-purple-600 text-white px-6 py-3 rounded-lg hover:bg-purple-700 transition-colors"
-          >
-            <span>🔐</span>
-            <span>Manage Users</span>
-          </Link>
-        </div>
-      </div>
+      <Card>
+        <CardHeader>
+          <CardTitle>Quick Actions</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="flex gap-4">
+            <Button asChild>
+              <Link to="/admin/samples">
+                <Upload className="mr-2 h-4 w-4" />
+                Upload Samples
+              </Link>
+            </Button>
+            <Button variant="secondary" asChild>
+              <Link to="/admin/customers">
+                <Users className="mr-2 h-4 w-4" />
+                View All Customers
+              </Link>
+            </Button>
+            <Button variant="outline" asChild>
+              <Link to="/admin/users">
+                <UserPlus className="mr-2 h-4 w-4" />
+                Manage Users
+              </Link>
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
 
-      <div className="bg-white rounded-lg shadow p-6 border border-gray-200">
-        <h2 className="text-xl font-bold text-gray-900 mb-4">Recent Activity</h2>
-        <div className="text-center py-8 text-gray-500">
-          <p>Activity feed coming soon...</p>
-          <p className="text-sm mt-2">This will show recent user actions, downloads, and system events.</p>
-        </div>
-      </div>
+      <Card>
+        <CardHeader>
+          <CardTitle>Recent Activity</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="text-center py-8 text-muted-foreground">
+            <p>Activity feed coming soon...</p>
+            <p className="text-sm mt-2">This will show recent user actions, downloads, and system events.</p>
+          </div>
+        </CardContent>
+      </Card>
     </div>
   );
 }

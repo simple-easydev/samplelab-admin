@@ -1,6 +1,11 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
+import { Lock, Mail, ArrowLeft, Loader2, AlertCircle } from "lucide-react";
 import { supabase } from "@/lib/supabase";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 
 export default function ForgotPassword() {
   const [email, setEmail] = useState("");
@@ -28,73 +33,79 @@ export default function ForgotPassword() {
   if (sent) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-purple-50 to-blue-50">
-        <div className="max-w-md w-full bg-white rounded-2xl shadow-xl p-8 text-center">
-          <div className="text-4xl mb-4">📧</div>
-          <h1 className="text-2xl font-bold text-gray-900 mb-4">Check Your Email</h1>
-          <p className="text-gray-600 mb-6">
-            We've sent a password reset link to <strong>{email}</strong>
-          </p>
-          <p className="text-sm text-gray-500 mb-6">The link will expire in 1 hour. Didn't receive the email?</p>
-          <button
-            onClick={() => setSent(false)}
-            className="inline-block bg-blue-100 text-blue-700 px-6 py-3 rounded-lg hover:bg-blue-200 transition-colors font-medium"
-          >
-            Resend Email
-          </button>
-          <div className="mt-6">
-            <Link to="/login" className="text-sm text-gray-600 hover:text-gray-800">
-              ← Back to Log In
-            </Link>
-          </div>
-        </div>
+        <Card className="w-full max-w-md">
+          <CardContent className="pt-6 text-center space-y-4">
+            <Mail className="h-12 w-12 mx-auto text-primary" />
+            <CardTitle className="text-2xl">Check Your Email</CardTitle>
+            <p className="text-muted-foreground">
+              We've sent a password reset link to <strong>{email}</strong>
+            </p>
+            <p className="text-sm text-muted-foreground">
+              The link will expire in 1 hour. Didn't receive the email?
+            </p>
+            <Button variant="secondary" onClick={() => setSent(false)}>
+              Resend Email
+            </Button>
+            <div className="pt-4">
+              <Link to="/login" className="text-sm text-muted-foreground hover:text-foreground inline-flex items-center gap-2">
+                <ArrowLeft className="h-4 w-4" />
+                Back to Log In
+              </Link>
+            </div>
+          </CardContent>
+        </Card>
       </div>
     );
   }
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-purple-50 to-blue-50">
-      <div className="max-w-md w-full bg-white rounded-2xl shadow-xl p-8">
-        <div className="text-center mb-8">
-          <div className="text-4xl mb-4">🔒</div>
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">Forgot Password?</h1>
-          <p className="text-gray-600">Enter your email and we'll send you a link to reset your password</p>
-        </div>
-
-        {error && (
-          <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg">
-            <p className="text-sm text-red-600">{error}</p>
+      <Card className="w-full max-w-md">
+        <CardHeader className="text-center">
+          <div className="flex justify-center mb-4">
+            <Lock className="h-12 w-12 text-primary" />
           </div>
-        )}
+          <CardTitle className="text-3xl">Forgot Password?</CardTitle>
+          <CardDescription>
+            Enter your email and we'll send you a link to reset your password
+          </CardDescription>
+        </CardHeader>
 
-        <form onSubmit={handleSubmit} className="space-y-6">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Email Address</label>
-            <input
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              required
-              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-              placeholder="admin@samplelab.com"
-              disabled={loading}
-            />
+        <CardContent className="space-y-6">
+          {error && (
+            <Alert variant="destructive">
+              <AlertCircle className="h-4 w-4" />
+              <AlertDescription>{error}</AlertDescription>
+            </Alert>
+          )}
+
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Email Address</label>
+              <Input
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                required
+                placeholder="admin@samplelab.com"
+                disabled={loading}
+              />
+            </div>
+
+            <Button type="submit" disabled={loading} className="w-full">
+              {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              {loading ? "Sending..." : "Continue"}
+            </Button>
+          </form>
+
+          <div className="text-center">
+            <Link to="/login" className="text-sm text-muted-foreground hover:text-foreground inline-flex items-center gap-2">
+              <ArrowLeft className="h-4 w-4" />
+              Back to Log In
+            </Link>
           </div>
-
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full bg-purple-600 text-white py-3 px-4 rounded-lg hover:bg-purple-700 transition-colors font-medium disabled:bg-gray-400 disabled:cursor-not-allowed"
-          >
-            {loading ? "Sending..." : "Continue"}
-          </button>
-        </form>
-
-        <div className="mt-6 text-center">
-          <Link to="/login" className="text-sm text-gray-600 hover:text-gray-800">
-            ← Back to Log In
-          </Link>
-        </div>
-      </div>
+        </CardContent>
+      </Card>
     </div>
   );
 }

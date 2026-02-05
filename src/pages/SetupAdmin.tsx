@@ -1,6 +1,12 @@
 import { useState, useEffect } from "react";
 import { useNavigate, useSearchParams, Link } from "react-router-dom";
+import { Target, Loader2, XCircle, Check, AlertCircle, Shield, UserCog } from "lucide-react";
 import { supabase } from "@/lib/supabase";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Badge } from "@/components/ui/badge";
 
 export default function SetupAdmin() {
   const [email, setEmail] = useState("");
@@ -79,10 +85,12 @@ export default function SetupAdmin() {
   if (validating) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-purple-50 to-blue-50">
-        <div className="text-center">
-          <div className="text-4xl mb-4">⏳</div>
-          <p className="text-gray-600">Validating invitation...</p>
-        </div>
+        <Card className="w-full max-w-md">
+          <CardContent className="pt-6 text-center space-y-4">
+            <Loader2 className="h-12 w-12 animate-spin mx-auto text-primary" />
+            <p className="text-muted-foreground">Validating invitation...</p>
+          </CardContent>
+        </Card>
       </div>
     );
   }
@@ -90,122 +98,134 @@ export default function SetupAdmin() {
   if (error && !email) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-purple-50 to-blue-50">
-        <div className="max-w-md w-full bg-white rounded-2xl shadow-xl p-8 text-center">
-          <div className="text-4xl mb-4">❌</div>
-          <h1 className="text-2xl font-bold text-gray-900 mb-4">Invalid Invitation</h1>
-          <p className="text-gray-600 mb-6">{error}</p>
-          <Link
-            to="/login"
-            className="inline-block bg-purple-600 text-white px-6 py-3 rounded-lg hover:bg-purple-700 transition-colors"
-          >
-            Go to Login
-          </Link>
-        </div>
+        <Card className="w-full max-w-md">
+          <CardContent className="pt-6 text-center space-y-4">
+            <XCircle className="h-12 w-12 mx-auto text-destructive" />
+            <CardTitle className="text-2xl">Invalid Invitation</CardTitle>
+            <CardDescription>{error}</CardDescription>
+            <Button asChild>
+              <Link to="/login">Go to Login</Link>
+            </Button>
+          </CardContent>
+        </Card>
       </div>
     );
   }
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-purple-50 to-blue-50">
-      <div className="max-w-md w-full bg-white rounded-2xl shadow-xl p-8">
-        <div className="text-center mb-8">
-          <div className="text-4xl mb-4">🎯</div>
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">Set Up Admin Account</h1>
-          <p className="text-gray-600">Complete your profile to get started</p>
-        </div>
-
-        <div className="mb-6 p-4 bg-purple-50 border border-purple-200 rounded-lg">
-          <p className="text-sm text-gray-700">
-            <strong>Role:</strong>{" "}
-            <span className="text-purple-700 font-medium">
-              {role === "full_admin" ? "Full Admin" : "Content Editor"}
-            </span>
-          </p>
-        </div>
-
-        {error && (
-          <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg">
-            <p className="text-sm text-red-600">{error}</p>
+      <Card className="w-full max-w-md">
+        <CardHeader className="text-center">
+          <div className="flex justify-center mb-4">
+            <Target className="h-12 w-12 text-primary" />
           </div>
-        )}
+          <CardTitle className="text-3xl">Set Up Admin Account</CardTitle>
+          <CardDescription>Complete your profile to get started</CardDescription>
+        </CardHeader>
 
-        <form onSubmit={handleSetup} className="space-y-6">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Email Address</label>
-            <input
-              type="email"
-              value={email}
-              disabled
-              className="w-full px-4 py-3 border border-gray-300 rounded-lg bg-gray-50 text-gray-600"
-            />
+        <CardContent className="space-y-6">
+          <Alert>
+            <div className="flex items-center gap-2">
+              {role === "full_admin" ? (
+                <Shield className="h-4 w-4" />
+              ) : (
+                <UserCog className="h-4 w-4" />
+              )}
+              <AlertDescription>
+                <strong>Role:</strong>{" "}
+                <Badge variant={role === "full_admin" ? "destructive" : "default"}>
+                  {role === "full_admin" ? "Full Admin" : "Content Editor"}
+                </Badge>
+              </AlertDescription>
+            </div>
+          </Alert>
+
+          {error && (
+            <Alert variant="destructive">
+              <AlertCircle className="h-4 w-4" />
+              <AlertDescription>{error}</AlertDescription>
+            </Alert>
+          )}
+
+          <form onSubmit={handleSetup} className="space-y-4">
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Email Address</label>
+              <Input type="email" value={email} disabled />
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-sm font-medium">
+                Full Name <span className="text-destructive">*</span>
+              </label>
+              <Input
+                type="text"
+                value={fullName}
+                onChange={(e) => setFullName(e.target.value)}
+                required
+                placeholder="John Doe"
+                disabled={loading}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-sm font-medium">
+                New Password <span className="text-destructive">*</span>
+              </label>
+              <Input
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+                placeholder="••••••••"
+                disabled={loading}
+              />
+              <ul className="text-xs space-y-1 ml-4 mt-2">
+                <li className={password.length >= 8 ? "text-green-600" : "text-muted-foreground"}>
+                  <Check className="inline h-3 w-3 mr-1" />
+                  At least 8 characters
+                </li>
+                <li className={/[A-Z]/.test(password) ? "text-green-600" : "text-muted-foreground"}>
+                  <Check className="inline h-3 w-3 mr-1" />
+                  One uppercase letter
+                </li>
+                <li className={/[a-z]/.test(password) ? "text-green-600" : "text-muted-foreground"}>
+                  <Check className="inline h-3 w-3 mr-1" />
+                  One lowercase letter
+                </li>
+                <li className={/[0-9]/.test(password) ? "text-green-600" : "text-muted-foreground"}>
+                  <Check className="inline h-3 w-3 mr-1" />
+                  One number
+                </li>
+              </ul>
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-sm font-medium">
+                Confirm Password <span className="text-destructive">*</span>
+              </label>
+              <Input
+                type="password"
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                required
+                placeholder="••••••••"
+                disabled={loading}
+              />
+            </div>
+
+            <Button type="submit" disabled={loading} className="w-full">
+              {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              {loading ? "Creating Account..." : "Create Admin Account"}
+            </Button>
+          </form>
+
+          <div className="text-center">
+            <Link to="/login" className="text-sm text-muted-foreground hover:text-foreground">
+              ← Back to Log In
+            </Link>
           </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Full Name <span className="text-red-500">*</span>
-            </label>
-            <input
-              type="text"
-              value={fullName}
-              onChange={(e) => setFullName(e.target.value)}
-              required
-              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-              placeholder="John Doe"
-              disabled={loading}
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              New Password <span className="text-red-500">*</span>
-            </label>
-            <input
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-              placeholder="••••••••"
-              disabled={loading}
-            />
-            <ul className="text-xs text-gray-500 space-y-1 ml-4 mt-2">
-              <li className={password.length >= 8 ? "text-green-600" : ""}>✓ At least 8 characters</li>
-              <li className={/[A-Z]/.test(password) ? "text-green-600" : ""}>✓ One uppercase letter</li>
-              <li className={/[a-z]/.test(password) ? "text-green-600" : ""}>✓ One lowercase letter</li>
-              <li className={/[0-9]/.test(password) ? "text-green-600" : ""}>✓ One number</li>
-            </ul>
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Confirm Password <span className="text-red-500">*</span>
-            </label>
-            <input
-              type="password"
-              value={confirmPassword}
-              onChange={(e) => setConfirmPassword(e.target.value)}
-              required
-              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-              placeholder="••••••••"
-              disabled={loading}
-            />
-          </div>
-
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full bg-purple-600 text-white py-3 px-4 rounded-lg hover:bg-purple-700 transition-colors font-medium disabled:bg-gray-400 disabled:cursor-not-allowed"
-          >
-            {loading ? "Creating Account..." : "Create Admin Account"}
-          </button>
-        </form>
-
-        <div className="mt-6 text-center">
-          <Link to="/login" className="text-sm text-gray-600 hover:text-gray-800">
-            ← Back to Log In
-          </Link>
-        </div>
-      </div>
+        </CardContent>
+      </Card>
     </div>
   );
 }

@@ -1,6 +1,11 @@
 import { useState, useEffect } from "react";
 import { useNavigate, useSearchParams, Link } from "react-router-dom";
+import { Key, Loader2, AlertCircle, XCircle, Check } from "lucide-react";
 import { supabase } from "@/lib/supabase";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 
 export default function ResetPassword() {
   const [password, setPassword] = useState("");
@@ -28,7 +33,9 @@ export default function ResetPassword() {
         }
       }
 
-      const { data: { session } } = await supabase.auth.getSession();
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
       if (session) {
         setSessionReady(true);
       } else {
@@ -96,11 +103,13 @@ export default function ResetPassword() {
   if (verifying) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-purple-50 to-blue-50">
-        <div className="max-w-md w-full bg-white rounded-2xl shadow-xl p-8 text-center">
-          <div className="text-4xl mb-4">⏳</div>
-          <h1 className="text-2xl font-bold text-gray-900 mb-2">Verifying reset link...</h1>
-          <p className="text-gray-600">Please wait a moment.</p>
-        </div>
+        <Card className="w-full max-w-md">
+          <CardContent className="pt-6 text-center space-y-4">
+            <Loader2 className="h-12 w-12 animate-spin mx-auto text-primary" />
+            <CardTitle className="text-2xl">Verifying reset link...</CardTitle>
+            <CardDescription>Please wait a moment.</CardDescription>
+          </CardContent>
+        </Card>
       </div>
     );
   }
@@ -108,86 +117,97 @@ export default function ResetPassword() {
   if (!sessionReady && error) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-purple-50 to-blue-50">
-        <div className="max-w-md w-full bg-white rounded-2xl shadow-xl p-8 text-center">
-          <div className="text-4xl mb-4">❌</div>
-          <h1 className="text-2xl font-bold text-gray-900 mb-2">Link Invalid or Expired</h1>
-          <p className="text-gray-600 mb-6">{error}</p>
-          <Link
-            to="/auth/forgot-password"
-            className="inline-block bg-purple-600 text-white px-6 py-3 rounded-lg hover:bg-purple-700 transition-colors"
-          >
-            Request new reset link
-          </Link>
-          <div className="mt-6">
-            <Link to="/login" className="text-sm text-gray-600 hover:text-gray-800">
-              ← Back to Log In
-            </Link>
-          </div>
-        </div>
+        <Card className="w-full max-w-md">
+          <CardContent className="pt-6 text-center space-y-4">
+            <XCircle className="h-12 w-12 mx-auto text-destructive" />
+            <CardTitle className="text-2xl">Link Invalid or Expired</CardTitle>
+            <CardDescription>{error}</CardDescription>
+            <Button asChild>
+              <Link to="/auth/forgot-password">Request new reset link</Link>
+            </Button>
+            <div className="pt-4">
+              <Link to="/login" className="text-sm text-muted-foreground hover:text-foreground">
+                ← Back to Log In
+              </Link>
+            </div>
+          </CardContent>
+        </Card>
       </div>
     );
   }
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-purple-50 to-blue-50">
-      <div className="max-w-md w-full bg-white rounded-2xl shadow-xl p-8">
-        <div className="text-center mb-8">
-          <div className="text-4xl mb-4">🔑</div>
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">Reset Password</h1>
-          <p className="text-gray-600">Enter your new password</p>
-        </div>
-
-        {error && (
-          <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg">
-            <p className="text-sm text-red-600">{error}</p>
+      <Card className="w-full max-w-md">
+        <CardHeader className="text-center">
+          <div className="flex justify-center mb-4">
+            <Key className="h-12 w-12 text-primary" />
           </div>
-        )}
+          <CardTitle className="text-3xl">Reset Password</CardTitle>
+          <CardDescription>Enter your new password</CardDescription>
+        </CardHeader>
 
-        <form onSubmit={handleSubmit} className="space-y-6">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">New Password</label>
-            <input
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-              placeholder="••••••••"
-              disabled={loading}
-            />
-            <div className="mt-2 space-y-1">
-              <p className="text-xs text-gray-600 font-medium">Password must contain:</p>
-              <ul className="text-xs text-gray-500 space-y-1 ml-4">
-                <li className={password.length >= 8 ? "text-green-600" : ""}>✓ At least 8 characters</li>
-                <li className={/[A-Z]/.test(password) ? "text-green-600" : ""}>✓ One uppercase letter</li>
-                <li className={/[a-z]/.test(password) ? "text-green-600" : ""}>✓ One lowercase letter</li>
-                <li className={/[0-9]/.test(password) ? "text-green-600" : ""}>✓ One number</li>
-              </ul>
+        <CardContent className="space-y-6">
+          {error && (
+            <Alert variant="destructive">
+              <AlertCircle className="h-4 w-4" />
+              <AlertDescription>{error}</AlertDescription>
+            </Alert>
+          )}
+
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div className="space-y-2">
+              <label className="text-sm font-medium">New Password</label>
+              <Input
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+                placeholder="••••••••"
+                disabled={loading}
+              />
+              <div className="space-y-1 mt-2">
+                <p className="text-xs font-medium text-muted-foreground">Password must contain:</p>
+                <ul className="text-xs space-y-1 ml-4">
+                  <li className={password.length >= 8 ? "text-green-600" : "text-muted-foreground"}>
+                    <Check className="inline h-3 w-3 mr-1" />
+                    At least 8 characters
+                  </li>
+                  <li className={/[A-Z]/.test(password) ? "text-green-600" : "text-muted-foreground"}>
+                    <Check className="inline h-3 w-3 mr-1" />
+                    One uppercase letter
+                  </li>
+                  <li className={/[a-z]/.test(password) ? "text-green-600" : "text-muted-foreground"}>
+                    <Check className="inline h-3 w-3 mr-1" />
+                    One lowercase letter
+                  </li>
+                  <li className={/[0-9]/.test(password) ? "text-green-600" : "text-muted-foreground"}>
+                    <Check className="inline h-3 w-3 mr-1" />
+                    One number
+                  </li>
+                </ul>
+              </div>
             </div>
-          </div>
 
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Confirm Password</label>
-            <input
-              type="password"
-              value={confirmPassword}
-              onChange={(e) => setConfirmPassword(e.target.value)}
-              required
-              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-              placeholder="••••••••"
-              disabled={loading}
-            />
-          </div>
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Confirm Password</label>
+              <Input
+                type="password"
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                required
+                placeholder="••••••••"
+                disabled={loading}
+              />
+            </div>
 
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full bg-purple-600 text-white py-3 px-4 rounded-lg hover:bg-purple-700 transition-colors font-medium disabled:bg-gray-400 disabled:cursor-not-allowed"
-          >
-            {loading ? "Resetting Password..." : "Reset Password & Log In"}
-          </button>
-        </form>
-      </div>
+            <Button type="submit" disabled={loading} className="w-full">
+              {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              {loading ? "Resetting Password..." : "Reset Password & Log In"}
+            </Button>
+          </form>
+        </CardContent>
+      </Card>
     </div>
   );
 }

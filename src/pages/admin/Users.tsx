@@ -1,7 +1,10 @@
 import { Link } from "react-router-dom";
+import { Mail } from "lucide-react";
 import { TableSkeleton } from "@/components/LoadingSkeleton";
 import UsersTable from "@/components/UsersTable";
 import { useAdminUsers } from "@/hooks/useAdminData";
+import { Button } from "@/components/ui/button";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 
 export default function UsersPage() {
   const { users, isLoading, isError } = useAdminUsers();
@@ -10,32 +13,30 @@ export default function UsersPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">User Management</h1>
-          <p className="text-gray-600 mt-1">Manage admin users and system access</p>
+          <h1 className="text-3xl font-bold">User Management</h1>
+          <p className="text-muted-foreground mt-1">
+            Manage admin users and system access
+          </p>
         </div>
-        <Link
-          to="/admin/users/invite"
-          className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors inline-flex items-center gap-2"
-        >
-          <span>📧</span>
-          <span>Invite Admin</span>
-        </Link>
+        <Button asChild>
+          <Link to="/admin/users/invite">
+            <Mail className="mr-2 h-4 w-4" />
+            Invite Admin
+          </Link>
+        </Button>
       </div>
 
       {isLoading ? (
-        <>
-          <div className="bg-white rounded-lg shadow border border-gray-200 p-4 animate-pulse">
-            <div className="h-10 bg-gray-200 rounded w-full" />
-          </div>
-          <TableSkeleton rows={8} />
-        </>
+        <TableSkeleton rows={8} />
       ) : (
         <UsersTable users={users} />
       )}
       {isError && (
-        <div className="p-4 bg-red-50 border border-red-200 rounded-lg text-red-700">
-          Failed to load users. Please try again.
-        </div>
+        <Alert variant="destructive">
+          <AlertDescription>
+            Failed to load users. Please try again.
+          </AlertDescription>
+        </Alert>
       )}
     </div>
   );

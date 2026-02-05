@@ -1,6 +1,9 @@
+import { UserPlus } from "lucide-react";
 import { TableSkeleton } from "@/components/LoadingSkeleton";
 import CustomerTable from "@/components/CustomerTable";
 import { useCustomers } from "@/hooks/useAdminData";
+import { Button } from "@/components/ui/button";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 
 export default function CustomersPage() {
   const { customers, isLoading, isError } = useCustomers();
@@ -9,28 +12,26 @@ export default function CustomersPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Customer Management</h1>
-          <p className="text-gray-600 mt-1">View and manage all platform customers</p>
+          <h1 className="text-3xl font-bold">Customer Management</h1>
+          <p className="text-muted-foreground mt-1">View and manage all platform customers</p>
         </div>
-        <button className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors">
-          + Add Customer
-        </button>
+        <Button>
+          <UserPlus className="mr-2 h-4 w-4" />
+          Add Customer
+        </Button>
       </div>
 
       {isLoading ? (
-        <>
-          <div className="bg-white rounded-lg shadow border border-gray-200 p-4 animate-pulse">
-            <div className="h-10 bg-gray-200 rounded w-full" />
-          </div>
-          <TableSkeleton rows={10} />
-        </>
+        <TableSkeleton rows={10} />
       ) : (
         <CustomerTable customers={customers} />
       )}
       {isError && (
-        <div className="p-4 bg-red-50 border border-red-200 rounded-lg text-red-700">
-          Failed to load customers. Please try again.
-        </div>
+        <Alert variant="destructive">
+          <AlertDescription>
+            Failed to load customers. Please try again.
+          </AlertDescription>
+        </Alert>
       )}
     </div>
   );

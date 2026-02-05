@@ -1,63 +1,66 @@
+import { Skeleton } from "@/components/ui/skeleton";
+import { Card } from "@/components/ui/card";
+
 export function StatsCardSkeleton() {
   return (
-    <div className="bg-white rounded-lg shadow p-6 border border-gray-200 animate-pulse">
+    <Card className="p-6">
       <div className="flex items-center justify-between mb-4">
-        <div className="h-4 bg-gray-200 rounded w-20" />
-        <div className="w-8 h-8 bg-gray-200 rounded" />
+        <Skeleton className="h-4 w-20" />
+        <Skeleton className="w-8 h-8 rounded" />
       </div>
-      <div className="h-8 bg-gray-200 rounded w-16 mb-2" />
-      <div className="h-3 bg-gray-200 rounded w-24" />
-    </div>
+      <Skeleton className="h-8 w-16 mb-2" />
+      <Skeleton className="h-3 w-24" />
+    </Card>
   );
 }
 
 export function TableSkeleton({ rows = 5 }: { rows?: number }) {
   return (
-    <div className="bg-white rounded-lg shadow border border-gray-200 overflow-hidden">
-      <div className="animate-pulse">
-        <div className="bg-gray-50 border-b border-gray-200 px-6 py-3">
-          <div className="flex gap-4">
-            {[1, 2, 3, 4].map((i) => (
-              <div key={i} className="h-3 bg-gray-200 rounded flex-1" />
-            ))}
-          </div>
+    <Card className="overflow-hidden">
+      <div className="p-4">
+        <div className="flex gap-4 border-b pb-3">
+          {[1, 2, 3, 4].map((i) => (
+            <Skeleton key={i} className="h-3 flex-1" />
+          ))}
         </div>
-        {Array.from({ length: rows }).map((_, i) => (
-          <div key={i} className="border-b border-gray-200 px-6 py-4">
-            <div className="flex gap-4 items-center">
-              <div className="w-10 h-10 bg-gray-200 rounded-full" />
-              <div className="flex-1 space-y-2">
-                <div className="h-4 bg-gray-200 rounded w-1/4" />
-                <div className="h-3 bg-gray-200 rounded w-1/3" />
+        <div className="divide-y">
+          {Array.from({ length: rows }).map((_, i) => (
+            <div key={i} className="py-4">
+              <div className="flex gap-4 items-center">
+                <Skeleton className="w-10 h-10 rounded-full" />
+                <div className="flex-1 space-y-2">
+                  <Skeleton className="h-4 w-1/4" />
+                  <Skeleton className="h-3 w-1/3" />
+                </div>
+                <Skeleton className="h-4 w-20" />
+                <Skeleton className="h-4 w-24" />
               </div>
-              <div className="h-4 bg-gray-200 rounded w-20" />
-              <div className="h-4 bg-gray-200 rounded w-24" />
             </div>
-          </div>
-        ))}
+          ))}
+        </div>
       </div>
-    </div>
+    </Card>
   );
 }
 
 export function CardSkeleton() {
   return (
-    <div className="bg-white rounded-lg shadow p-6 border border-gray-200 animate-pulse">
-      <div className="h-5 bg-gray-200 rounded w-32 mb-4" />
+    <Card className="p-6">
+      <Skeleton className="h-5 w-32 mb-4" />
       <div className="space-y-3">
-        <div className="h-4 bg-gray-200 rounded w-full" />
-        <div className="h-4 bg-gray-200 rounded w-5/6" />
-        <div className="h-4 bg-gray-200 rounded w-4/6" />
+        <Skeleton className="h-4 w-full" />
+        <Skeleton className="h-4 w-5/6" />
+        <Skeleton className="h-4 w-4/6" />
       </div>
-    </div>
+    </Card>
   );
 }
 
 export function PageHeaderSkeleton() {
   return (
-    <div className="animate-pulse">
-      <div className="h-8 bg-gray-200 rounded w-64 mb-2" />
-      <div className="h-4 bg-gray-200 rounded w-96" />
+    <div className="space-y-2">
+      <Skeleton className="h-8 w-64" />
+      <Skeleton className="h-4 w-96" />
     </div>
   );
 }
