@@ -14,6 +14,13 @@ import Customers from "@/pages/admin/Customers";
 import Samples from "@/pages/admin/Samples";
 import Analytics from "@/pages/admin/Analytics";
 import Invite from "@/pages/admin/Invite";
+import Library from "@/pages/admin/Library";
+import Creators from "@/pages/admin/Creators";
+import Plans from "@/pages/admin/Plans";
+import Announcements from "@/pages/admin/Announcements";
+import Roles from "@/pages/admin/Roles";
+import Settings from "@/pages/admin/Settings";
+import PlaceholderPage from "@/pages/admin/PlaceholderPage";
 
 export default function App() {
   return (
@@ -36,8 +43,41 @@ export default function App() {
             }
           >
             <Route index element={<AdminDashboard />} />
+            
+            {/* Library Routes */}
+            <Route path="library" element={<Library />} />
+            <Route path="library/packs" element={<PlaceholderPage title="Packs" description="Manage sample packs" />} />
+            <Route path="library/samples" element={<Samples />} />
+            <Route path="library/genres" element={<PlaceholderPage title="Genres" description="Manage music genres" />} />
+            <Route path="library/categories" element={<PlaceholderPage title="Categories" description="Manage sample categories" />} />
+            <Route path="library/moods" element={<PlaceholderPage title="Moods" description="Manage mood tags" />} />
+            
+            {/* Creators */}
+            <Route path="creators" element={<Creators />} />
+            
+            {/* Users */}
             <Route path="users" element={<Users />} />
             <Route path="users/invite" element={<Invite />} />
+            
+            {/* Plans & Credits Routes */}
+            <Route path="plans" element={<Plans />} />
+            <Route path="plans/tiers" element={<PlaceholderPage title="Plan Tiers" description="Manage subscription tiers" />} />
+            <Route path="plans/credit-rules" element={<PlaceholderPage title="Credit Rules" description="Configure credit rules" />} />
+            <Route path="plans/trial-settings" element={<PlaceholderPage title="Trial Settings" description="Manage trial periods" />} />
+            <Route path="plans/top-up-packs" element={<PlaceholderPage title="Top-up Packs" description="Manage credit top-up packs" />} />
+            
+            {/* Announcements Routes */}
+            <Route path="announcements" element={<Announcements />} />
+            <Route path="announcements/banner" element={<PlaceholderPage title="Banners" description="Manage banner announcements" />} />
+            <Route path="announcements/popups" element={<PlaceholderPage title="Pop-ups" description="Manage pop-up announcements" />} />
+            
+            {/* Admin & Roles */}
+            <Route path="roles" element={<Roles />} />
+            
+            {/* Settings */}
+            <Route path="settings" element={<Settings />} />
+            
+            {/* Legacy routes - keeping for backwards compatibility */}
             <Route path="customers" element={<Customers />} />
             <Route path="samples" element={<Samples />} />
             <Route path="analytics" element={<Analytics />} />

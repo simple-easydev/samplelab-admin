@@ -2,7 +2,6 @@
  * Admin Panel Theme Configuration
  * 
  * Customize your sidebar and admin panel colors here.
- * Each navigation item can have its own color scheme.
  */
 
 export const sidebarTheme = {
@@ -42,57 +41,6 @@ export const sidebarTheme = {
 } as const;
 
 /**
- * Navigation items color configuration
- * 
- * Each item has:
- * - color: Text and icon color when active
- * - bgColor: Background color when active
- * - hoverColor: Background color on hover
- */
-export const navigationColors = {
-  dashboard: {
-    color: "text-blue-500",
-    bgColor: "bg-blue-500/10",
-    hoverColor: "hover:bg-blue-500/20",
-  },
-  samples: {
-    color: "text-purple-500",
-    bgColor: "bg-purple-500/10",
-    hoverColor: "hover:bg-purple-500/20",
-  },
-  customers: {
-    color: "text-green-500",
-    bgColor: "bg-green-500/10",
-    hoverColor: "hover:bg-green-500/20",
-  },
-  users: {
-    color: "text-orange-500",
-    bgColor: "bg-orange-500/10",
-    hoverColor: "hover:bg-orange-500/20",
-  },
-  analytics: {
-    color: "text-pink-500",
-    bgColor: "bg-pink-500/10",
-    hoverColor: "hover:bg-pink-500/20",
-  },
-} as const;
-
-/**
- * Example: Change to a different color scheme
- * 
- * To use a warm color scheme, replace the colors above with:
- * 
- * dashboard: {
- *   color: "text-amber-500",
- *   bgColor: "bg-amber-500/10",
- *   hoverColor: "hover:bg-amber-500/20",
- * }
- * 
- * Or for a monochrome scheme:
- * 
- * dashboard: {
- *   color: "text-gray-700",
- *   bgColor: "bg-gray-100",
- *   hoverColor: "hover:bg-gray-200",
- * }
+ * Navigation colors are now configured in src/config/navigation.ts
+ * Each menu item can have its own color scheme.
  */

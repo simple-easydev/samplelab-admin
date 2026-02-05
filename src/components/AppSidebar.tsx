@@ -1,4 +1,4 @@
-import { LayoutDashboard, Music, Users, Shield, TrendingUp, Settings } from "lucide-react";
+import { ChevronRight, Settings } from "lucide-react";
 import { Link, useLocation } from "react-router-dom";
 import {
   Sidebar,
@@ -6,46 +6,23 @@ import {
   SidebarFooter,
   SidebarGroup,
   SidebarGroupContent,
+  SidebarGroupLabel,
   SidebarHeader,
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
+  SidebarMenuSub,
+  SidebarMenuSubButton,
+  SidebarMenuSubItem,
   SidebarRail,
 } from "@/components/ui/sidebar";
-import { sidebarTheme, navigationColors } from "@/config/theme";
-
-const navigation = [
-  { 
-    name: "Dashboard", 
-    href: "/admin", 
-    icon: LayoutDashboard,
-    ...navigationColors.dashboard,
-  },
-  { 
-    name: "Samples", 
-    href: "/admin/samples", 
-    icon: Music,
-    ...navigationColors.samples,
-  },
-  { 
-    name: "Customers", 
-    href: "/admin/customers", 
-    icon: Users,
-    ...navigationColors.customers,
-  },
-  { 
-    name: "Users", 
-    href: "/admin/users", 
-    icon: Shield,
-    ...navigationColors.users,
-  },
-  { 
-    name: "Analytics", 
-    href: "/admin/analytics", 
-    icon: TrendingUp,
-    ...navigationColors.analytics,
-  },
-];
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
+import { sidebarTheme } from "@/config/theme";
+import { navigation } from "@/config/navigation";
 
 export function AppSidebar() {
   const location = useLocation();
@@ -78,23 +55,88 @@ export function AppSidebar() {
         {/* Content */}
         <SidebarContent className="px-2 py-4">
           <SidebarGroup>
+            <SidebarGroupLabel>Menu</SidebarGroupLabel>
             <SidebarGroupContent>
-              <SidebarMenu className="gap-2">
+              <SidebarMenu className="gap-1">
                 {navigation.map((item) => {
                   const isActive =
                     pathname === item.href ||
                     (item.href !== "/admin" && pathname.startsWith(item.href));
                   const Icon = item.icon;
 
+                  // If item has sub-items, render as collapsible
+                  if (item.items && item.items.length > 0) {
+                    const hasActiveChild = item.items.some(
+                      (subItem) => pathname === subItem.href || pathname.startsWith(subItem.href)
+                    );
+
+                    return (
+                      <Collapsible
+                        key={item.name}
+                        asChild
+                        defaultOpen={hasActiveChild}
+                        className="group/collapsible"
+                      >
+                        <SidebarMenuItem>
+                          <CollapsibleTrigger asChild>
+                            <SidebarMenuButton
+                              tooltip={item.name}
+                              className={`
+                                ${hasActiveChild || isActive
+                                  ? `${item.bgColor} ${item.color} font-medium shadow-sm`
+                                  : `${item.hoverColor} transition-colors`
+                                }
+                              `}
+                            >
+                              <div className={`
+                                flex items-center justify-center rounded-lg p-1.5
+                                ${hasActiveChild || isActive ? item.color : 'text-slate-600 dark:text-slate-400'}
+                              `}>
+                                <Icon className="size-4" />
+                              </div>
+                              <span className={hasActiveChild || isActive ? item.color : ''}>
+                                {item.name}
+                              </span>
+                              <ChevronRight className="ml-auto transition-transform duration-200 group-data-[state=open]/collapsible:rotate-90" />
+                            </SidebarMenuButton>
+                          </CollapsibleTrigger>
+                          <CollapsibleContent>
+                            <SidebarMenuSub>
+                              {item.items.map((subItem) => {
+                                const isSubActive = pathname === subItem.href || pathname.startsWith(subItem.href);
+                                const SubIcon = subItem.icon;
+
+                                return (
+                                  <SidebarMenuSubItem key={subItem.name}>
+                                    <SidebarMenuSubButton
+                                      asChild
+                                      isActive={isSubActive}
+                                    >
+                                      <Link to={subItem.href}>
+                                        {SubIcon && <SubIcon className="size-4" />}
+                                        <span>{subItem.name}</span>
+                                      </Link>
+                                    </SidebarMenuSubButton>
+                                  </SidebarMenuSubItem>
+                                );
+                              })}
+                            </SidebarMenuSub>
+                          </CollapsibleContent>
+                        </SidebarMenuItem>
+                      </Collapsible>
+                    );
+                  }
+
+                  // Regular menu item without sub-items
                   return (
                     <SidebarMenuItem key={item.name}>
-                      <SidebarMenuButton 
-                        asChild 
-                        isActive={isActive} 
+                      <SidebarMenuButton
+                        asChild
+                        isActive={isActive}
                         tooltip={item.name}
                         className={`
-                          ${isActive 
-                            ? `${item.bgColor} ${item.color} font-medium shadow-sm` 
+                          ${isActive
+                            ? `${item.bgColor} ${item.color} font-medium shadow-sm`
                             : `${item.hoverColor} transition-colors`
                           }
                         `}
