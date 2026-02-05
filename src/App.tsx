@@ -10,9 +10,6 @@ import Dashboard from "@/pages/Dashboard";
 import AdminLayout from "@/pages/admin/AdminLayout";
 import AdminDashboard from "@/pages/admin/AdminDashboard";
 import Users from "@/pages/admin/Users";
-import Customers from "@/pages/admin/Customers";
-import Samples from "@/pages/admin/Samples";
-import Analytics from "@/pages/admin/Analytics";
 import Invite from "@/pages/admin/Invite";
 import Library from "@/pages/admin/Library";
 import Creators from "@/pages/admin/Creators";
@@ -76,11 +73,6 @@ export default function App() {
             
             {/* Settings */}
             <Route path="settings" element={<Settings />} />
-            
-            {/* Legacy routes - keeping for backwards compatibility */}
-            <Route path="customers" element={<Customers />} />
-            <Route path="samples" element={<Samples />} />
-            <Route path="analytics" element={<Analytics />} />
           </Route>
 
           <Route path="*" element={<Navigate to="/" replace />} />
