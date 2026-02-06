@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import { toast } from "sonner";
 import { ArrowLeft, Package, Upload, X, Play, Pause, Trash2, FileAudio, Loader2 } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -82,6 +83,10 @@ export default function CreatePackPage() {
   });
   const [playingSampleId, setPlayingSampleId] = useState<string | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
+
+  // Alert/Error states
+  const [validationError, setValidationError] = useState<string | null>(null);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   // Reference data from Supabase
   const [creators, setCreators] = useState<Creator[]>([]);
@@ -236,7 +241,7 @@ export default function CreatePackPage() {
 
     audio.play().catch(error => {
       console.error("Error playing audio:", error);
-      alert("Failed to play audio. Please check the file format.");
+      setErrorMessage("Failed to play audio. Please check the file format.");
     });
 
     audio.onended = () => {
@@ -247,7 +252,7 @@ export default function CreatePackPage() {
     audio.onerror = () => {
       setPlayingSampleId(null);
       URL.revokeObjectURL(audioUrl);
-      alert("Error playing audio file.");
+      setErrorMessage("Error playing audio file.");
     };
 
     setPlayingSampleId(sampleId);
@@ -265,8 +270,9 @@ export default function CreatePackPage() {
 
   const handleSaveDraft = async () => {
     // Basic validation
+    setValidationError(null);
     if (!formData.name || !formData.creator || formData.genres.length === 0 || !formData.category) {
-      alert("Please fill in all required fields (Name, Creator, Genre, Category)");
+      setValidationError("Please fill in all required fields (Name, Creator, Genre, Category)");
       return;
     }
 
@@ -275,13 +281,14 @@ export default function CreatePackPage() {
 
   const handlePublish = async () => {
     // Validation
+    setValidationError(null);
     if (!formData.name || !formData.creator || formData.genres.length === 0 || !formData.category) {
-      alert("Please fill in all required fields (Name, Creator, Genre, Category)");
+      setValidationError("Please fill in all required fields (Name, Creator, Genre, Category)");
       return;
     }
 
     if (sampleFiles.length === 0) {
-      alert("Please upload at least one sample file before publishing");
+      setValidationError("Please upload at least one sample file before publishing");
       return;
     }
 
@@ -433,18 +440,26 @@ export default function CreatePackPage() {
         message: status === "Draft" ? "Pack saved as draft!" : "Pack published successfully!",
       });
       
-      // Small delay to show completion message
+      // Show toast notification
+      toast.success(
+        status === "Draft"
+          ? `Pack "${formData.name}" saved as draft!`
+          : `Pack "${formData.name}" published successfully!`,
+        {
+          description: status === "Draft" 
+            ? "You can edit and publish it later." 
+            : "The pack is now live and available to users.",
+          duration: 4000,
+        }
+      );
+      
+      // Navigate after a short delay to show the toast
       setTimeout(() => {
-        alert(
-          status === "Draft"
-            ? `Pack "${formData.name}" saved as draft!`
-            : `Pack "${formData.name}" published successfully!`
-        );
         navigate("/admin/library?tab=packs");
-      }, 500);
+      }, 1000);
     } catch (error) {
       console.error("Error creating pack:", error);
-      alert(
+      setErrorMessage(
         error instanceof Error
           ? error.message
           : "An unexpected error occurred while creating the pack"
@@ -480,6 +495,20 @@ export default function CreatePackPage() {
           <p className="text-muted-foreground mt-1">Create a new sample pack for your library</p>
         </div>
       </div>
+
+      {/* Validation Error */}
+      {validationError && (
+        <Alert variant="destructive">
+          <AlertDescription>{validationError}</AlertDescription>
+        </Alert>
+      )}
+
+      {/* Error Message */}
+      {errorMessage && (
+        <Alert variant="destructive">
+          <AlertDescription>{errorMessage}</AlertDescription>
+        </Alert>
+      )}
 
       {/* Loading State */}
       {isLoadingData && (

@@ -24,6 +24,8 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Separator } from "@/components/ui/separator";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -31,6 +33,16 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { supabase } from "@/lib/supabase";
 import {
   CREDIT_COSTS,
@@ -70,6 +82,14 @@ export default function PackDetail() {
   const [error, setError] = useState<string | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
   const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
+
+  // Dialog state
+  const [showDisableDialog, setShowDisableDialog] = useState(false);
+  const [showEnableDialog, setShowEnableDialog] = useState(false);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [deleteConfirmText, setDeleteConfirmText] = useState("");
+  const [actionError, setActionError] = useState<string | null>(null);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
   // Audio player state
   const [isPlaying, setIsPlaying] = useState(false);
@@ -127,12 +147,12 @@ export default function PackDetail() {
 
         if (genresError) throw genresError;
 
-        // Fetch samples for this pack
+        // Fetch samples for this pack (exclude soft-deleted samples)
         const { data: samplesData, error: samplesError } = await supabase
           .from("samples")
           .select("id, type, has_stems, audio_url")
           .eq("pack_id", id)
-          .eq("status", "Active");
+          .in("status", ["Active", "Disabled"]); // Exclude Deleted samples
 
         if (samplesError) throw samplesError;
 
@@ -238,12 +258,12 @@ export default function PackDetail() {
     return `${mins}:${secs.toString().padStart(2, "0")}`;
   };
 
-  const handleDisablePack = async () => {
+  const confirmDisablePack = async () => {
     if (!pack || !id) return;
-    if (!confirm("Are you sure you want to disable this pack?")) return;
 
     try {
       setIsUpdatingStatus(true);
+      setActionError(null);
       const { error } = await supabase
         .from("packs")
         .update({ status: "Disabled", updated_at: new Date().toISOString() })
@@ -252,20 +272,25 @@ export default function PackDetail() {
       if (error) throw error;
 
       setPack({ ...pack, status: "Disabled" });
+      setShowDisableDialog(false);
+      setSuccessMessage("Pack disabled successfully");
+      
+      // Auto-clear success message after 3 seconds
+      setTimeout(() => setSuccessMessage(null), 3000);
     } catch (err: any) {
       console.error("Error disabling pack:", err);
-      alert("Failed to disable pack: " + err.message);
+      setActionError("Failed to disable pack: " + err.message);
     } finally {
       setIsUpdatingStatus(false);
     }
   };
 
-  const handleEnablePack = async () => {
+  const confirmEnablePack = async () => {
     if (!pack || !id) return;
-    if (!confirm("Are you sure you want to enable (publish) this pack?")) return;
 
     try {
       setIsUpdatingStatus(true);
+      setActionError(null);
       const { error } = await supabase
         .from("packs")
         .update({ status: "Published", updated_at: new Date().toISOString() })
@@ -274,45 +299,43 @@ export default function PackDetail() {
       if (error) throw error;
 
       setPack({ ...pack, status: "Published" });
+      setShowEnableDialog(false);
+      setSuccessMessage("Pack published successfully");
+      
+      // Auto-clear success message after 3 seconds
+      setTimeout(() => setSuccessMessage(null), 3000);
     } catch (err: any) {
       console.error("Error enabling pack:", err);
-      alert("Failed to enable pack: " + err.message);
+      setActionError("Failed to enable pack: " + err.message);
     } finally {
       setIsUpdatingStatus(false);
     }
   };
 
-  const handleDeletePack = async () => {
+  const confirmDeletePack = async () => {
     if (!pack || !id) return;
-
-    // Check if pack has downloads
-    if (pack.download_count > 0) {
-      alert("Cannot delete pack: This pack has downloads.");
-      return;
-    }
-
-    if (
-      !confirm(
-        `Are you sure you want to delete "${pack.name}"? This action cannot be undone.`
-      )
-    ) {
-      return;
-    }
 
     try {
       setIsDeleting(true);
+      setActionError(null);
       const { error } = await supabase.from("packs").delete().eq("id", id);
 
       if (error) throw error;
 
-      alert("Pack deleted successfully");
+      setShowDeleteDialog(false);
+      setDeleteConfirmText(""); // Reset confirmation text
       navigate("/admin/library?tab=packs");
     } catch (err: any) {
       console.error("Error deleting pack:", err);
-      alert("Failed to delete pack: " + err.message);
+      setActionError("Failed to delete pack: " + err.message);
     } finally {
       setIsDeleting(false);
     }
+  };
+
+  const handleCloseDeleteDialog = () => {
+    setShowDeleteDialog(false);
+    setDeleteConfirmText(""); // Reset confirmation text when dialog closes
   };
 
   const getStatusBadgeVariant = (status: string) => {
@@ -438,20 +461,20 @@ export default function PackDetail() {
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
                 {pack.status === "Published" && (
-                  <DropdownMenuItem onClick={handleDisablePack} disabled={isUpdatingStatus}>
+                  <DropdownMenuItem onClick={() => setShowDisableDialog(true)} disabled={isUpdatingStatus}>
                     <Ban className="h-4 w-4 mr-2" />
                     Disable Pack
                   </DropdownMenuItem>
                 )}
                 {pack.status === "Disabled" && (
-                  <DropdownMenuItem onClick={handleEnablePack} disabled={isUpdatingStatus}>
+                  <DropdownMenuItem onClick={() => setShowEnableDialog(true)} disabled={isUpdatingStatus}>
                     <Check className="h-4 w-4 mr-2" />
                     Enable Pack
                   </DropdownMenuItem>
                 )}
                 <DropdownMenuSeparator />
                 <DropdownMenuItem
-                  onClick={handleDeletePack}
+                  onClick={() => pack.download_count === 0 && setShowDeleteDialog(true)}
                   disabled={pack.download_count > 0 || isDeleting}
                   className="text-destructive focus:text-destructive"
                 >
@@ -815,20 +838,20 @@ export default function PackDetail() {
                     Edit Pack
                   </DropdownMenuItem>
                   {pack.status === "Published" && (
-                    <DropdownMenuItem onClick={handleDisablePack}>
+                    <DropdownMenuItem onClick={() => setShowDisableDialog(true)}>
                       <Ban className="h-4 w-4 mr-2" />
                       Disable Pack
                     </DropdownMenuItem>
                   )}
                   {pack.status === "Disabled" && (
-                    <DropdownMenuItem onClick={handleEnablePack}>
+                    <DropdownMenuItem onClick={() => setShowEnableDialog(true)}>
                       <Check className="h-4 w-4 mr-2" />
                       Enable Pack
                     </DropdownMenuItem>
                   )}
                   <DropdownMenuSeparator />
                   <DropdownMenuItem
-                    onClick={handleDeletePack}
+                    onClick={() => pack.download_count === 0 && setShowDeleteDialog(true)}
                     disabled={pack.download_count > 0}
                     className="text-destructive focus:text-destructive"
                   >
@@ -841,6 +864,174 @@ export default function PackDetail() {
           </Card>
         </div>
       </div>
+
+      {/* Success Message */}
+      {successMessage && (
+        <div className="fixed bottom-4 right-4 z-50 max-w-md">
+          <Alert>
+            <Check className="h-4 w-4" />
+            <AlertDescription>{successMessage}</AlertDescription>
+          </Alert>
+        </div>
+      )}
+
+      {/* Action Error Message */}
+      {actionError && (
+        <div className="fixed bottom-4 right-4 z-50 max-w-md">
+          <Alert variant="destructive">
+            <AlertCircle className="h-4 w-4" />
+            <AlertDescription>{actionError}</AlertDescription>
+          </Alert>
+        </div>
+      )}
+
+      {/* Disable Pack Confirmation Dialog */}
+      <AlertDialog open={showDisableDialog} onOpenChange={setShowDisableDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Disable Pack?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This pack and all samples inside it will be hidden from users. Previously 
+              downloaded items remain available in user accounts. You can re-enable this 
+              pack at any time.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isUpdatingStatus}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={confirmDisablePack}
+              disabled={isUpdatingStatus}
+              className="bg-orange-600 hover:bg-orange-700"
+            >
+              {isUpdatingStatus ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Disabling...
+                </>
+              ) : (
+                "Disable Pack"
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Enable Pack Confirmation Dialog */}
+      <AlertDialog open={showEnableDialog} onOpenChange={setShowEnableDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Enable Pack?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This pack and all Active samples inside it will become visible to users. 
+              They will appear in search results and be available for download.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isUpdatingStatus}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={confirmEnablePack}
+              disabled={isUpdatingStatus}
+            >
+              {isUpdatingStatus ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Enabling...
+                </>
+              ) : (
+                "Enable Pack"
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Delete Pack Confirmation Dialog */}
+      <AlertDialog open={showDeleteDialog} onOpenChange={handleCloseDeleteDialog}>
+        <AlertDialogContent className="max-w-xl">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Pack?</AlertDialogTitle>
+            <AlertDialogDescription asChild>
+              <div className="space-y-4 text-sm">
+                <p className="font-medium text-destructive">
+                  This action is permanent and cannot be undone.
+                </p>
+
+                {pack && pack.download_count > 0 ? (
+                  <Alert variant="destructive">
+                    <AlertCircle className="h-4 w-4" />
+                    <AlertDescription>
+                      <strong>Cannot delete: This pack has {pack.download_count} downloads.</strong>
+                      <br />
+                      Packs with download history cannot be deleted. Use "Disable Pack" instead.
+                    </AlertDescription>
+                  </Alert>
+                ) : (
+                  <>
+                    <div>
+                      <p className="font-medium mb-2">Deleting this pack will permanently remove:</p>
+                      <ul className="list-disc list-inside space-y-1 text-muted-foreground ml-2">
+                        <li>The pack itself</li>
+                        <li>All samples inside the pack</li>
+                        <li>All metadata and associations</li>
+                      </ul>
+                    </div>
+
+                    <Alert>
+                      <AlertCircle className="h-4 w-4" />
+                      <AlertDescription>
+                        Previously downloaded samples will remain accessible to users in their download history.
+                      </AlertDescription>
+                    </Alert>
+
+                    <div className="p-3 bg-muted rounded-lg">
+                      <p className="text-xs text-muted-foreground">
+                        <strong>⚠️ Deleting is irreversible.</strong> Use only when content must be 
+                        permanently removed for legal or compliance reasons. <strong>"Disable Pack"</strong> is 
+                        the recommended removal method.
+                      </p>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="delete-confirm" className="text-sm font-medium">
+                        To confirm, type <code className="bg-muted px-1 py-0.5 rounded text-destructive">delete</code> below:
+                      </Label>
+                      <Input
+                        id="delete-confirm"
+                        value={deleteConfirmText}
+                        onChange={(e) => setDeleteConfirmText(e.target.value)}
+                        placeholder="Type 'delete' to confirm"
+                        disabled={isDeleting}
+                        autoComplete="off"
+                      />
+                    </div>
+                  </>
+                )}
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={confirmDeletePack}
+              disabled={
+                isDeleting || 
+                (pack?.download_count || 0) > 0 || 
+                deleteConfirmText.toLowerCase() !== "delete"
+              }
+              className="bg-destructive hover:bg-destructive/90"
+            >
+              {isDeleting ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Deleting...
+                </>
+              ) : (
+                "Delete Pack Permanently"
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
