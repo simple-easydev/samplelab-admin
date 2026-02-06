@@ -1,4 +1,4 @@
-import { ChevronRight, Settings } from "lucide-react";
+import { ChevronRight } from "lucide-react";
 import { Link, useLocation } from "react-router-dom";
 import {
   Sidebar,
@@ -35,13 +35,19 @@ export function AppSidebar() {
         <SidebarHeader className={`border-b ${sidebarTheme.header.border} bg-gradient-to-r ${sidebarTheme.header.background} ${sidebarTheme.header.darkBackground}`}>
           <SidebarMenu>
             <SidebarMenuItem>
-              <SidebarMenuButton size="lg" asChild className="hover:bg-white/50 dark:hover:bg-slate-800/50">
+              <SidebarMenuButton 
+                size="lg" 
+                asChild 
+                className="hover:bg-white/50 dark:hover:bg-slate-800/50 group-data-[collapsible=icon]:!p-2"
+              >
                 <Link to="/admin">
-                  <div className={`flex aspect-square size-8 items-center justify-center rounded-lg bg-gradient-to-br ${sidebarTheme.logo.gradient} text-white shadow-lg ${sidebarTheme.logo.shadow}`}>
-                    <Settings className="size-4" />
-                  </div>
-                  <div className="flex flex-col gap-0.5 leading-none">
-                    <span className={`font-bold bg-gradient-to-r ${sidebarTheme.logo.textGradient} bg-clip-text text-transparent`}>
+                  <img 
+                    src="/THE-SAMPLE-LAB-LOGO-crop_e96a00ec-e755-4d60-bde8-fd6192182ff8_440x.png-2 2.png" 
+                    alt="SampleLab Logo" 
+                    className="size-8 object-contain shrink-0"
+                  />
+                  <div className="flex flex-col gap-0.5 leading-none group-data-[collapsible=icon]:hidden">
+                    <span className="font-bold text-foreground">
                       SampleLab
                     </span>
                     <span className="text-xs text-muted-foreground">Admin Panel</span>
@@ -88,12 +94,10 @@ export function AppSidebar() {
                                 }
                               `}
                             >
-                              <div className={`
-                                flex items-center justify-center rounded-lg p-1.5
+                              <Icon className={`
+                                size-4 shrink-0
                                 ${hasActiveChild || isActive ? item.color : 'text-slate-600 dark:text-slate-400'}
-                              `}>
-                                <Icon className="size-4" />
-                              </div>
+                              `} />
                               <span className={hasActiveChild || isActive ? item.color : ''}>
                                 {item.name}
                               </span>
@@ -141,13 +145,11 @@ export function AppSidebar() {
                           }
                         `}
                       >
-                        <Link to={item.href} className="flex items-center gap-3">
-                          <div className={`
-                            flex items-center justify-center rounded-lg p-1.5
+                        <Link to={item.href}>
+                          <Icon className={`
+                            size-4 shrink-0
                             ${isActive ? item.color : 'text-slate-600 dark:text-slate-400'}
-                          `}>
-                            <Icon className="size-4" />
-                          </div>
+                          `} />
                           <span className={isActive ? item.color : ''}>
                             {item.name}
                           </span>
@@ -165,11 +167,11 @@ export function AppSidebar() {
         <SidebarFooter className={`border-t ${sidebarTheme.footer.border} bg-gradient-to-r ${sidebarTheme.footer.background} ${sidebarTheme.footer.darkBackground}`}>
           <SidebarMenu>
             <SidebarMenuItem>
-              <SidebarMenuButton className="hover:bg-white/50 dark:hover:bg-slate-800/50">
-                <div className={`flex aspect-square size-8 items-center justify-center rounded-full bg-gradient-to-br ${sidebarTheme.avatar.gradient} text-white text-sm font-bold shadow-md`}>
+              <SidebarMenuButton className="hover:bg-white/50 dark:hover:bg-slate-800/50 group-data-[collapsible=icon]:!p-2">
+                <div className={`flex aspect-square size-8 items-center justify-center rounded-full bg-gradient-to-br ${sidebarTheme.avatar.gradient} text-white text-sm font-bold shadow-md shrink-0`}>
                   A
                 </div>
-                <div className="flex flex-col gap-0.5 leading-none">
+                <div className="flex flex-col gap-0.5 leading-none group-data-[collapsible=icon]:hidden">
                   <span className="font-medium text-sm">Admin User</span>
                   <span className="text-xs text-muted-foreground">admin@samplelab.com</span>
                 </div>
