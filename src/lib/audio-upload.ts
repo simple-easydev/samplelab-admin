@@ -19,6 +19,75 @@ export interface AudioUploadResult {
 }
 
 /**
+ * Upload an avatar/image file to Supabase Storage
+ * @param file The image file to upload
+ * @returns Upload result with public URL or error
+ */
+export async function uploadAvatar(
+  file: File
+): Promise<AudioUploadResult> {
+  try {
+    // Validate file type
+    const validTypes = ["image/jpeg", "image/jpg", "image/png", "image/gif", "image/webp"];
+    if (!validTypes.includes(file.type)) {
+      return {
+        success: false,
+        error: "Invalid file type. Only JPEG, PNG, GIF, and WebP images are allowed.",
+      };
+    }
+
+    // Validate file size (max 5MB)
+    const maxSize = 5 * 1024 * 1024; // 5MB
+    if (file.size > maxSize) {
+      return {
+        success: false,
+        error: "File too large. Maximum size is 5MB.",
+      };
+    }
+
+    // Generate unique filename
+    const timestamp = Date.now();
+    const randomString = Math.random().toString(36).substring(2, 15);
+    const fileExt = file.name.split(".").pop();
+    const fileName = `${timestamp}-${randomString}.${fileExt}`;
+    const filePath = `creators/${fileName}`;
+
+    // Upload to Supabase Storage
+    const { data, error } = await supabase.storage
+      .from("avatars")
+      .upload(filePath, file, {
+        cacheControl: "3600",
+        upsert: false,
+      });
+
+    if (error) {
+      console.error("Upload error:", error);
+      return {
+        success: false,
+        error: error.message,
+      };
+    }
+
+    // Get public URL
+    const { data: publicUrlData } = supabase.storage
+      .from("avatars")
+      .getPublicUrl(data.path);
+
+    return {
+      success: true,
+      url: publicUrlData.publicUrl,
+      path: data.path,
+    };
+  } catch (error) {
+    console.error("Unexpected upload error:", error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Upload failed",
+    };
+  }
+}
+
+/**
  * Upload an audio file to Supabase Storage
  * @param file The audio file to upload
  * @param folder Optional subfolder (e.g., 'samples', 'stems')

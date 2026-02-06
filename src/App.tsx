@@ -17,6 +17,7 @@ import CreatePack from "@/pages/admin/library/CreatePack";
 import PackDetail from "@/pages/admin/library/PackDetail";
 import EditPack from "@/pages/admin/library/EditPack";
 import Creators from "@/pages/admin/Creators";
+import CreatorProfile from "@/pages/admin/CreatorProfile";
 import Plans from "@/pages/admin/Plans";
 import Announcements from "@/pages/admin/Announcements";
 import Roles from "@/pages/admin/Roles";
@@ -59,6 +60,8 @@ export default function App() {
             
             {/* Creators */}
             <Route path="creators" element={<Creators />} />
+            <Route path="creators/new" element={<CreatorProfile />} />
+            <Route path="creators/:id" element={<CreatorProfile />} />
             
             {/* Users */}
             <Route path="users" element={<Users />} />

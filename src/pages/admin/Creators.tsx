@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { 
   UserCircle, 
@@ -89,6 +90,7 @@ interface CreatorFormData {
 }
 
 export default function CreatorsPage() {
+  const navigate = useNavigate();
   const [creators, setCreators] = useState<Creator[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -101,9 +103,7 @@ export default function CreatorsPage() {
   // Modal states
   const [showAddModal, setShowAddModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
-  const [showViewModal, setShowViewModal] = useState(false);
   const [editingCreator, setEditingCreator] = useState<Creator | null>(null);
-  const [viewingCreator, setViewingCreator] = useState<Creator | null>(null);
   const [formData, setFormData] = useState<CreatorFormData>({
     name: "",
     email: "",
@@ -140,7 +140,7 @@ export default function CreatorsPage() {
 
       // For each creator, count packs, samples, and recent downloads
       const creatorsWithCounts = await Promise.all(
-        (creatorsData || []).map(async (creator) => {
+        (creatorsData || []).map(async (creator: any) => {
           // Count packs by this creator
           const { count: packsCount } = await supabase
             .from("packs")
@@ -158,7 +158,7 @@ export default function CreatorsPage() {
             const { count } = await supabase
               .from("samples")
               .select("*", { count: "exact", head: true })
-              .in("pack_id", packIds.map((p) => p.id))
+              .in("pack_id", packIds.map((p: any) => p.id))
               .in("status", ["Active", "Disabled"]); // Exclude deleted
 
             samplesCount = count || 0;
@@ -172,7 +172,7 @@ export default function CreatorsPage() {
             .eq("creator_id", creator.id);
 
           const downloads30d = (packsData || []).reduce(
-            (sum, pack) => sum + (pack.download_count || 0),
+            (sum: number, pack: any) => sum + (pack.download_count || 0),
             0
           );
 
@@ -224,22 +224,14 @@ export default function CreatorsPage() {
       }
     });
 
-  // Handle Add Creator
+  // Handle Add Creator - navigate to CreatorProfile page
   const handleAddCreator = () => {
-    setFormData({
-      name: "",
-      email: "",
-      bio: "",
-      avatar_url: "",
-      is_active: true,
-    });
-    setShowAddModal(true);
+    navigate("/admin/creators/new");
   };
 
   // Handle View Creator
   const handleViewCreator = (creator: Creator) => {
-    setViewingCreator(creator);
-    setShowViewModal(true);
+    navigate(`/admin/creators/${creator.id}`);
   };
 
   // Handle Edit Creator
@@ -478,7 +470,7 @@ export default function CreatorsPage() {
             <h1 className="text-3xl font-bold">Creators</h1>
             <p className="text-muted-foreground mt-1">Manage sample pack creators</p>
           </div>
-          <Button onClick={handleAddCreator}>
+          <Button onClick={() => navigate("/admin/creators/new")}>
             <Plus className="h-4 w-4 mr-2" />
             Add New Creator
           </Button>
@@ -801,86 +793,6 @@ export default function CreatorsPage() {
         </DialogContent>
       </Dialog>
 
-      {/* View Creator Modal */}
-      <Dialog open={showViewModal} onOpenChange={setShowViewModal}>
-        <DialogContent className="max-w-lg">
-          <DialogHeader>
-            <DialogTitle>Creator Details</DialogTitle>
-            <DialogDescription>
-              View information about this creator.
-            </DialogDescription>
-          </DialogHeader>
-          {viewingCreator && (
-            <div className="space-y-6 py-4">
-              <div className="flex items-center gap-4">
-                <Avatar className="h-16 w-16">
-                  <AvatarImage src={viewingCreator.avatar_url || undefined} />
-                  <AvatarFallback className="text-lg">
-                    {getInitials(viewingCreator.name)}
-                  </AvatarFallback>
-                </Avatar>
-                <div>
-                  <h3 className="text-lg font-semibold">{viewingCreator.name}</h3>
-                  {viewingCreator.email && (
-                    <p className="text-sm text-muted-foreground flex items-center gap-1">
-                      <Mail className="h-3 w-3" />
-                      {viewingCreator.email}
-                    </p>
-                  )}
-                </div>
-              </div>
-
-              {viewingCreator.bio && (
-                <div>
-                  <Label className="text-xs text-muted-foreground">Bio</Label>
-                  <p className="text-sm mt-1">{viewingCreator.bio}</p>
-                </div>
-              )}
-
-              <div className="grid grid-cols-3 gap-4">
-                <div className="text-center p-4 border rounded-lg">
-                  <p className="text-2xl font-bold">{viewingCreator.packs_count}</p>
-                  <p className="text-xs text-muted-foreground">Packs</p>
-                </div>
-                <div className="text-center p-4 border rounded-lg">
-                  <p className="text-2xl font-bold">{viewingCreator.samples_count}</p>
-                  <p className="text-xs text-muted-foreground">Samples</p>
-                </div>
-                <div className="text-center p-4 border rounded-lg">
-                  <p className="text-2xl font-bold">{viewingCreator.downloads_30d}</p>
-                  <p className="text-xs text-muted-foreground">Downloads</p>
-                </div>
-              </div>
-
-              <div className="flex items-center justify-between pt-4 border-t">
-                <div>
-                  <p className="text-xs text-muted-foreground">Status</p>
-                  <Badge
-                    variant={viewingCreator.is_active ? "default" : "secondary"}
-                    className="mt-1"
-                  >
-                    {viewingCreator.is_active ? "Active" : "Disabled"}
-                  </Badge>
-                </div>
-                <div className="text-right">
-                  <p className="text-xs text-muted-foreground">Created</p>
-                  <p className="text-sm mt-1">
-                    {new Date(viewingCreator.created_at).toLocaleDateString()}
-                  </p>
-                </div>
-              </div>
-            </div>
-          )}
-          <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => setShowViewModal(false)}
-            >
-              Close
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
 
       {/* Edit Creator Modal */}
       <Dialog open={showEditModal} onOpenChange={setShowEditModal}>
@@ -990,24 +902,44 @@ export default function CreatorsPage() {
 
       {/* Disable/Enable Creator Dialog */}
       <AlertDialog open={showDisableDialog} onOpenChange={setShowDisableDialog}>
-        <AlertDialogContent>
+        <AlertDialogContent className="max-w-xl">
           <AlertDialogHeader>
             <AlertDialogTitle>
-              {selectedCreator?.is_active ? "Disable" : "Enable"} Creator?
+              {selectedCreator?.is_active ? "Disable Creator?" : "Enable Creator?"}
             </AlertDialogTitle>
-            <AlertDialogDescription>
-              {selectedCreator?.is_active ? (
-                <>
-                  This will disable <strong>"{selectedCreator.name}"</strong>, making
-                  them unavailable for new pack assignments. All existing packs and data
-                  will be preserved.
-                </>
-              ) : (
-                <>
-                  This will enable <strong>"{selectedCreator?.name}"</strong>, making
-                  them available for pack assignments again.
-                </>
-              )}
+            <AlertDialogDescription asChild>
+              <div className="space-y-4">
+                {selectedCreator?.is_active ? (
+                  <>
+                    <p>
+                      This creator will be hidden from the site wherever creator
+                      information is shown.
+                    </p>
+                    <p>
+                      Their existing packs and samples will remain visible and
+                      downloadable to users.
+                    </p>
+                    <p>You can re-enable this creator at any time.</p>
+                    <Alert>
+                      <AlertCircle className="h-4 w-4" />
+                      <AlertDescription>
+                        <strong>Disabled creators = soft-removed profiles.</strong>
+                        <br />
+                        Packs and samples stay live, and the creator can be re-enabled
+                        at any moment.
+                      </AlertDescription>
+                    </Alert>
+                  </>
+                ) : (
+                  <>
+                    <p>
+                      This will enable <strong>"{selectedCreator?.name}"</strong>,
+                      making them visible on the site and available for pack assignments
+                      again.
+                    </p>
+                  </>
+                )}
+              </div>
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -1033,7 +965,7 @@ export default function CreatorsPage() {
 
       {/* Delete Creator Dialog */}
       <AlertDialog open={showDeleteDialog} onOpenChange={handleCloseDeleteDialog}>
-        <AlertDialogContent className="max-w-xl">
+        <AlertDialogContent className="max-w-2xl">
           <AlertDialogHeader>
             <AlertDialogTitle>Delete Creator?</AlertDialogTitle>
             <AlertDialogDescription asChild>
@@ -1042,39 +974,59 @@ export default function CreatorsPage() {
                   This action is permanent and cannot be undone.
                 </p>
 
-                {selectedCreator && selectedCreator.packs_count > 0 ? (
-                  <Alert variant="destructive">
-                    <AlertCircle className="h-4 w-4" />
-                    <AlertDescription>
-                      <strong>Cannot delete: This creator has {selectedCreator.packs_count} pack(s).</strong>
-                      <br />
-                      Creators with existing packs cannot be deleted. Use "Disable" instead.
-                    </AlertDescription>
-                  </Alert>
-                ) : (
-                  <>
-                    <div>
-                      <p>
-                        Are you sure you want to permanently delete{" "}
-                        <strong>"{selectedCreator?.name}"</strong>?
-                      </p>
-                    </div>
+                <div>
+                  <p className="font-medium mb-2">
+                    Deleting this creator will permanently remove:
+                  </p>
+                  <ul className="list-disc list-inside space-y-1 text-sm ml-2">
+                    <li>The creator profile</li>
+                    <li>Bio, avatar, and any creator metadata</li>
+                    <li>Creator association on future content</li>
+                  </ul>
+                </div>
 
-                    <div className="space-y-2">
-                      <Label htmlFor="delete-confirm" className="text-sm font-medium">
-                        To confirm, type <code className="bg-muted px-1 py-0.5 rounded text-destructive">delete</code> below:
-                      </Label>
-                      <Input
-                        id="delete-confirm"
-                        value={deleteConfirmText}
-                        onChange={(e) => setDeleteConfirmText(e.target.value)}
-                        placeholder="Type 'delete' to confirm"
-                        disabled={isUpdating}
-                        autoComplete="off"
-                      />
-                    </div>
-                  </>
-                )}
+                <div>
+                  <p className="text-sm">
+                    <strong>Existing packs and samples will not be deleted</strong>,
+                    but they will no longer show this creator until reassigned.
+                  </p>
+                </div>
+
+                <Alert>
+                  <AlertCircle className="h-4 w-4" />
+                  <AlertDescription>
+                    Previously downloaded content will remain accessible to users in
+                    their Download History.
+                  </AlertDescription>
+                </Alert>
+
+                <div className="space-y-2">
+                  <Label htmlFor="delete-confirm" className="text-sm font-medium">
+                    To confirm, type{" "}
+                    <code className="bg-muted px-1 py-0.5 rounded text-destructive">
+                      delete
+                    </code>{" "}
+                    below:
+                  </Label>
+                  <Input
+                    id="delete-confirm"
+                    value={deleteConfirmText}
+                    onChange={(e) => setDeleteConfirmText(e.target.value)}
+                    placeholder="Type 'delete' to confirm"
+                    disabled={isUpdating}
+                    autoComplete="off"
+                  />
+                </div>
+
+                <Alert variant="destructive">
+                  <AlertCircle className="h-4 w-4" />
+                  <AlertDescription>
+                    <strong>⚠️ Deleting is irreversible.</strong> Use only when a
+                    creator profile must be permanently removed (e.g., contract ended,
+                    legal request). <strong>"Disable Creator"</strong> is the
+                    recommended removal method for normal cases.
+                  </AlertDescription>
+                </Alert>
               </div>
             </AlertDialogDescription>
           </AlertDialogHeader>
@@ -1083,9 +1035,7 @@ export default function CreatorsPage() {
             <AlertDialogAction
               onClick={confirmDeleteCreator}
               disabled={
-                isUpdating ||
-                (selectedCreator?.packs_count || 0) > 0 ||
-                deleteConfirmText.toLowerCase() !== "delete"
+                isUpdating || deleteConfirmText.toLowerCase() !== "delete"
               }
               className="bg-destructive hover:bg-destructive/90"
             >
