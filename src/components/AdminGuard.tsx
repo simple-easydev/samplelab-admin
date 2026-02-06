@@ -12,20 +12,45 @@ export default function AdminGuard({ children }: { children: React.ReactNode }) 
     let cancelled = false;
 
     async function check() {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
-        if (!cancelled) setStatus("redirect-login");
-        return;
-      }
-      // Client-side admin check (same as Login page) - no dependency on API server
-      const { data: userData } = await supabase
-        .from("users")
-        .select("is_admin")
-        .eq("id", session.user.id)
-        .single<{ is_admin: boolean }>();
+      try {
+        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+        
+        if (sessionError) {
+          console.error("Session error:", sessionError);
+          if (!cancelled) setStatus("redirect-login");
+          return;
+        }
 
-      if (!cancelled) {
-        setStatus(userData?.is_admin ? "admin" : "redirect-dashboard");
+        if (!session) {
+          console.log("No session found, redirecting to login");
+          if (!cancelled) setStatus("redirect-login");
+          return;
+        }
+
+        console.log("Session found for user:", session.user.id);
+
+        // Client-side admin check (same as Login page) - no dependency on API server
+        const { data: userData, error: userError } = await supabase
+          .from("users")
+          .select("is_admin")
+          .eq("id", session.user.id)
+          .single<{ is_admin: boolean }>();
+
+        if (userError) {
+          console.error("User query error:", userError);
+          // If user not found in users table, redirect to login
+          if (!cancelled) setStatus("redirect-login");
+          return;
+        }
+
+        console.log("User data:", userData);
+
+        if (!cancelled) {
+          setStatus(userData?.is_admin ? "admin" : "redirect-dashboard");
+        }
+      } catch (err) {
+        console.error("AdminGuard check error:", err);
+        if (!cancelled) setStatus("redirect-login");
       }
     }
 
