@@ -63,9 +63,12 @@ export default function App() {
             <Route path="creators/new" element={<CreatorProfile />} />
             <Route path="creators/:id" element={<CreatorProfile />} />
             
-            {/* Users */}
+            {/* Users (Customers) */}
             <Route path="users" element={<Users />} />
-            <Route path="users/invite" element={<Invite />} />
+            
+            {/* Admin & Roles */}
+            <Route path="roles" element={<Roles />} />
+            <Route path="roles/invite" element={<Invite />} />
             
             {/* Plans & Credits Routes */}
             <Route path="plans" element={<Plans />} />

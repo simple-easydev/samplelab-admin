@@ -1,43 +1,29 @@
-import { Link } from "react-router-dom";
-import { Mail } from "lucide-react";
-import { TableSkeleton } from "@/components/LoadingSkeleton";
-import UsersTable from "@/components/UsersTable";
-import { useAdminUsers } from "@/hooks/useAdminData";
-import { Button } from "@/components/ui/button";
-import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Users } from "lucide-react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 export default function UsersPage() {
-  const { users, isLoading, isError } = useAdminUsers();
-
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold">User Management</h1>
-          <p className="text-muted-foreground mt-1">
-            Manage admin users and system access
-          </p>
-        </div>
-        <Button asChild>
-          <Link to="/admin/users/invite">
-            <Mail className="mr-2 h-4 w-4" />
-            Invite Admin
-          </Link>
-        </Button>
+      <div>
+        <h1 className="text-3xl font-bold">Users</h1>
+        <p className="text-muted-foreground mt-1">
+          Manage customer accounts and user data
+        </p>
       </div>
 
-      {isLoading ? (
-        <TableSkeleton rows={8} />
-      ) : (
-        <UsersTable users={users} />
-      )}
-      {isError && (
-        <Alert variant="destructive">
-          <AlertDescription>
-            Failed to load users. Please try again.
-          </AlertDescription>
-        </Alert>
-      )}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Users className="h-5 w-5" />
+            Customer Management
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <p className="text-muted-foreground">
+            Customer management features coming soon.
+          </p>
+        </CardContent>
+      </Card>
     </div>
   );
 }

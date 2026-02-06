@@ -74,9 +74,9 @@ export default function InviteAdminPage() {
             </h1>
             <p className="text-muted-foreground mt-1">Share this link with the new admin</p>
           </div>
-          <Button variant="ghost" onClick={() => navigate("/admin/users")}>
+          <Button variant="ghost" onClick={() => navigate("/admin/roles")}>
             <ArrowLeft className="mr-2 h-4 w-4" />
-            Back to Users
+            Back to Admins
           </Button>
         </div>
 
@@ -118,8 +118,8 @@ export default function InviteAdminPage() {
           >
             Invite Another Admin
           </Button>
-          <Button onClick={() => navigate("/admin/users")} className="flex-1">
-            Go to Users
+          <Button onClick={() => navigate("/admin/roles")} className="flex-1">
+            Go to Admins
           </Button>
         </div>
       </div>
