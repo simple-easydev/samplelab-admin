@@ -51,7 +51,6 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { supabase } from "@/lib/supabase";
 
 interface User {
   id: string;
@@ -234,10 +233,7 @@ export default function UsersPage() {
 
   // Handle view user
   const handleViewUser = (user: User) => {
-    // TODO: Navigate to user detail page
-    toast.info(`View user: ${user.name}`, {
-      description: "User detail page coming soon",
-    });
+    navigate(`/admin/users/${user.id}`);
   };
 
   // Handle disable user

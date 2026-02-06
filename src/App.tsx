@@ -11,6 +11,7 @@ import Dashboard from "@/pages/Dashboard";
 import AdminLayout from "@/pages/admin/AdminLayout";
 import AdminDashboard from "@/pages/admin/AdminDashboard";
 import Users from "@/pages/admin/Users";
+import UserDetail from "@/pages/admin/UserDetail";
 import Invite from "@/pages/admin/Invite";
 import Library from "@/pages/admin/library/Library";
 import CreatePack from "@/pages/admin/library/CreatePack";
@@ -65,6 +66,7 @@ export default function App() {
             
             {/* Users (Customers) */}
             <Route path="users" element={<Users />} />
+            <Route path="users/:id" element={<UserDetail />} />
             
             {/* Admin & Roles */}
             <Route path="roles" element={<Roles />} />
