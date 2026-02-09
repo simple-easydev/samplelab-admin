@@ -72,11 +72,31 @@ export default function SetupAdmin() {
       const { data, error: fnError } = await supabase.functions.invoke("setup-admin", {
         body: { token, fullName, password },
       });
-      if (fnError) throw new Error(fnError.message || "Failed to set up account");
-      if (data?.error) throw new Error(data.error);
+      
+      // Log full response for debugging
+      console.log("Edge Function response:", { data, error: fnError });
+      
+      if (fnError) {
+        // Try to get more details from the error
+        const errorMessage = fnError.message || fnError.toString();
+        console.error("Edge Function error details:", fnError);
+        throw new Error(errorMessage);
+      }
+      
+      if (data?.error) {
+        console.error("Edge Function returned error:", data.error);
+        throw new Error(data.error);
+      }
+      
+      if (!data?.success) {
+        throw new Error("Unexpected response from server");
+      }
+      
       navigate("/login?setup=success");
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : "Failed to set up account");
+      const errorMessage = err instanceof Error ? err.message : "Failed to set up account";
+      console.error("Setup error:", err);
+      setError(errorMessage);
     } finally {
       setLoading(false);
     }
