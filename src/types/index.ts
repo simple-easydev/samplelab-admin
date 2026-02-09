@@ -2,6 +2,7 @@ export interface User {
   id: string;
   email: string;
   name: string | null;
+  avatar_url: string | null;
   is_admin: boolean;
   role: "full_admin" | "content_editor";
   status: "active" | "pending" | "disabled";
