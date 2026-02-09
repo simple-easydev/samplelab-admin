@@ -32,12 +32,54 @@ async function fetchAdminStats(): Promise<AdminStats> {
 }
 
 async function fetchAdminUsers(): Promise<{ users: User[] }> {
-  const { data, error } = await supabase
+  // Fetch existing admin users with their inviter info
+  const { data: users, error: usersError } = await supabase
     .from("users")
-    .select("*")
+    .select("*, inviter:invited_by(email, name)")
+    .eq("is_admin", true)
     .order("created_at", { ascending: false });
-  if (error) throw error;
-  return { users: data ?? [] };
+  
+  if (usersError) throw usersError;
+
+  // Fetch pending invites
+  const { data: invites, error: invitesError } = await supabase
+    .from("admin_invites")
+    .select("*, inviter:invited_by(email, name)")
+    .eq("used", false)
+    .order("created_at", { ascending: false });
+
+  if (invitesError) throw invitesError;
+
+  // Format existing users
+  const formattedUsers: User[] = (users || []).map((user: any) => ({
+    id: user.id,
+    email: user.email,
+    name: user.name,
+    is_admin: user.is_admin,
+    role: user.role as "full_admin" | "content_editor",
+    status: user.status || "active" as "active" | "pending" | "disabled",
+    last_login: user.last_login,
+    invited_by: user.inviter?.name || user.inviter?.email || null,
+    created_at: user.created_at,
+    updated_at: user.updated_at,
+  }));
+
+  // Convert pending invites to User format with "pending" status
+  const pendingUsers: User[] = (invites || []).map((invite: any) => ({
+    id: invite.id, // Temporary ID until user is created
+    email: invite.email,
+    name: null,
+    is_admin: true,
+    role: invite.role as "full_admin" | "content_editor",
+    status: "pending" as const,
+    last_login: null,
+    invited_by: invite.inviter?.name || invite.inviter?.email || null,
+    created_at: invite.created_at,
+    updated_at: invite.created_at,
+  }));
+
+  // Combine and return
+  return { users: [...formattedUsers, ...pendingUsers] };
 }
 
 async function fetchCustomers(): Promise<{ customers: Customer[] }> {

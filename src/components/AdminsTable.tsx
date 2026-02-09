@@ -95,6 +95,7 @@ export default function AdminsTable({ admins, onRefresh }: AdminsTableProps) {
         .from("admin_invites")
         .select("*")
         .eq("email", admin.email)
+        .eq("used", false)
         .single() as any;
 
       if (!invite) {
@@ -112,6 +113,23 @@ export default function AdminsTable({ admins, onRefresh }: AdminsTableProps) {
         .eq("id", invite.id);
 
       if (error) throw error;
+
+      // Resend the email
+      const inviteLink = `${window.location.origin}/login?token=${invite.token}`;
+      
+      try {
+        await supabase.functions.invoke("send-invite-email", {
+          body: {
+            email: admin.email,
+            role: admin.role,
+            inviteLink,
+            inviterName: admin.invited_by,
+          },
+        });
+      } catch (emailErr) {
+        console.error("Email sending failed:", emailErr);
+        // Don't throw - invite was updated even if email failed
+      }
 
       toast.success("Invite resent successfully");
     } catch (error) {
@@ -158,28 +176,41 @@ export default function AdminsTable({ admins, onRefresh }: AdminsTableProps) {
     setIsLoading(true);
     
     try {
-      // First, delete from auth
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) throw new Error("Not authenticated");
+      if (selectedAdmin.status === "pending") {
+        // Delete pending invite
+        const { error } = await supabase
+          .from("admin_invites")
+          .delete()
+          .eq("id", selectedAdmin.id);
 
-      // Delete user record (soft delete by removing admin status)
-      const { error } = await supabase
-        .from("users")
-        // @ts-expect-error - Database types may not be up to date
-        .update({ 
-          is_admin: false,
-          role: "content_editor",
-          updated_at: new Date().toISOString()
-        })
-        .eq("id", selectedAdmin.id);
+        if (error) {
+          console.error("Delete invite error:", error);
+          throw error;
+        }
+        toast.success("Invitation deleted successfully");
+      } else {
+        // Delete existing admin user (soft delete by removing admin status)
+        const { error } = await supabase
+          .from("users")
+          // @ts-expect-error - Database types may not be up to date
+          .update({ 
+            is_admin: false,
+            role: "content_editor",
+            updated_at: new Date().toISOString()
+          })
+          .eq("id", selectedAdmin.id);
 
-      if (error) throw error;
+        if (error) {
+          console.error("Delete admin error:", error);
+          throw error;
+        }
+        toast.success("Admin access revoked successfully");
+      }
 
-      toast.success("Admin access revoked successfully");
       onRefresh();
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error deleting admin:", error);
-      toast.error("Failed to delete admin");
+      toast.error(error?.message || "Failed to delete admin");
     } finally {
       setIsLoading(false);
       setActionType(null);
@@ -285,37 +316,47 @@ export default function AdminsTable({ admins, onRefresh }: AdminsTableProps) {
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
-                        <DropdownMenuItem
-                          onClick={() => {
-                            setSelectedAdmin(admin);
-                            setNewRole(admin.role);
-                            setActionType("changeRole");
-                          }}
-                        >
-                          <UserCog className="mr-2 h-4 w-4" />
-                          Change Role
-                        </DropdownMenuItem>
-                        
-                        {admin.status === "pending" && (
-                          <DropdownMenuItem
-                            onClick={() => handleResendInvite(admin)}
-                          >
-                            <Mail className="mr-2 h-4 w-4" />
-                            Resend Invite
-                          </DropdownMenuItem>
+                        {admin.status !== "pending" && (
+                          <>
+                            <DropdownMenuItem
+                              onClick={() => {
+                                setSelectedAdmin(admin);
+                                setNewRole(admin.role);
+                                setActionType("changeRole");
+                              }}
+                            >
+                              <UserCog className="mr-2 h-4 w-4" />
+                              Change Role
+                            </DropdownMenuItem>
+                            
+                            <DropdownMenuSeparator />
+                            
+                            <DropdownMenuItem
+                              onClick={() => {
+                                setSelectedAdmin(admin);
+                                setActionType("disable");
+                              }}
+                            >
+                              <Ban className="mr-2 h-4 w-4" />
+                              {admin.status === "disabled" ? "Enable" : "Disable"}
+                            </DropdownMenuItem>
+                            
+                            <DropdownMenuSeparator />
+                          </>
                         )}
                         
-                        <DropdownMenuSeparator />
-                        
-                        <DropdownMenuItem
-                          onClick={() => {
-                            setSelectedAdmin(admin);
-                            setActionType("disable");
-                          }}
-                        >
-                          <Ban className="mr-2 h-4 w-4" />
-                          {admin.status === "disabled" ? "Enable" : "Disable"}
-                        </DropdownMenuItem>
+                        {admin.status === "pending" && (
+                          <>
+                            <DropdownMenuItem
+                              onClick={() => handleResendInvite(admin)}
+                            >
+                              <Mail className="mr-2 h-4 w-4" />
+                              Resend Invite
+                            </DropdownMenuItem>
+                            
+                            <DropdownMenuSeparator />
+                          </>
+                        )}
                         
                         <DropdownMenuItem
                           onClick={() => {
@@ -325,7 +366,7 @@ export default function AdminsTable({ admins, onRefresh }: AdminsTableProps) {
                           className="text-destructive"
                         >
                           <Trash2 className="mr-2 h-4 w-4" />
-                          Delete
+                          {admin.status === "pending" ? "Cancel Invite" : "Delete"}
                         </DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>
@@ -396,9 +437,14 @@ export default function AdminsTable({ admins, onRefresh }: AdminsTableProps) {
       <AlertDialog open={actionType === "delete"} onOpenChange={(open) => !open && setActionType(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete Admin</AlertDialogTitle>
+            <AlertDialogTitle>
+              {selectedAdmin?.status === "pending" ? "Cancel Invitation" : "Delete Admin"}
+            </AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to delete {selectedAdmin?.email}? This action cannot be undone.
+              {selectedAdmin?.status === "pending" 
+                ? `Are you sure you want to cancel the invitation for ${selectedAdmin?.email}? The invite link will no longer work.`
+                : `Are you sure you want to remove admin access for ${selectedAdmin?.email}? They will lose access to the admin panel.`
+              }
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -408,7 +454,10 @@ export default function AdminsTable({ admins, onRefresh }: AdminsTableProps) {
               disabled={isLoading}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
-              {isLoading ? "Deleting..." : "Delete"}
+              {isLoading 
+                ? (selectedAdmin?.status === "pending" ? "Canceling..." : "Deleting...") 
+                : (selectedAdmin?.status === "pending" ? "Cancel Invite" : "Delete")
+              }
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

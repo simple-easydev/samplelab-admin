@@ -1,13 +1,15 @@
-import { Link } from "react-router-dom";
+import { useState } from "react";
 import { UserPlus } from "lucide-react";
 import { TableSkeleton } from "@/components/LoadingSkeleton";
 import AdminsTable from "@/components/AdminsTable";
+import InviteAdminModal from "@/components/InviteAdminModal";
 import { useAdminUsers } from "@/hooks/useAdminData";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 
 export default function RolesPage() {
   const { users, isLoading, isError, refresh } = useAdminUsers();
+  const [inviteModalOpen, setInviteModalOpen] = useState(false);
 
   // Transform users to match AdminsTable interface
   const admins = users
@@ -32,11 +34,9 @@ export default function RolesPage() {
             Manage who has access to the Admin Panel and what they can do.
           </p>
         </div>
-        <Button asChild>
-          <Link to="/admin/roles/invite">
-            <UserPlus className="mr-2 h-4 w-4" />
-            Invite Admin
-          </Link>
+        <Button onClick={() => setInviteModalOpen(true)}>
+          <UserPlus className="mr-2 h-4 w-4" />
+          Invite Admin
         </Button>
       </div>
 
@@ -52,6 +52,15 @@ export default function RolesPage() {
           </AlertDescription>
         </Alert>
       )}
+
+      <InviteAdminModal
+        open={inviteModalOpen}
+        onOpenChange={setInviteModalOpen}
+        onSuccess={() => {
+          refresh();
+          // Keep modal open to show the invite link
+        }}
+      />
     </div>
   );
 }
