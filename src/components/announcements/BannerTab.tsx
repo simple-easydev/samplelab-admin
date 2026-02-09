@@ -224,19 +224,27 @@ export function BannerTab() {
 
   return (
     <div className="space-y-6">
-      {/* Header with Create Button */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-2xl font-semibold">Banner Announcements</h2>
-          <p className="text-sm text-muted-foreground mt-1">
-            Manage banners that appear at the top of pages
-          </p>
-        </div>
-        <Button onClick={() => setCreateModalOpen(true)}>
-          <Plus className="mr-2 h-4 w-4" />
-          Create Banner
-        </Button>
-      </div>
+      {/* Header Card with Create Button */}
+      <Card>
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle className="flex items-center gap-2">
+                <LayoutTemplate className="h-5 w-5" />
+                Banner Announcements
+              </CardTitle>
+              <CardDescription className="mt-1.5">
+                Manage banners that appear at the top of pages.
+                Only one banner can be active at a time.
+              </CardDescription>
+            </div>
+            <Button onClick={() => setCreateModalOpen(true)}>
+              <Plus className="h-4 w-4 mr-2" />
+              Create Banner
+            </Button>
+          </div>
+        </CardHeader>
+      </Card>
 
       {/* Banners Grid */}
       {banners.length === 0 ? (

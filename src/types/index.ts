@@ -68,3 +68,17 @@ export interface Banner {
   created_at: string;
   updated_at: string;
 }
+
+export interface Popup {
+  id: string;
+  title: string;
+  message: string;
+  cta_label: string | null;
+  cta_url: string | null;
+  audience: "all" | "subscribers" | "trial";
+  frequency: "once" | "until-dismissed";
+  active: boolean;
+  created_by: string | null;
+  created_at: string;
+  updated_at: string;
+}
