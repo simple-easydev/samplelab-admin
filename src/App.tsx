@@ -81,8 +81,8 @@ export default function App() {
             
             {/* Announcements Routes */}
             <Route path="announcements" element={<Announcements />} />
-            <Route path="announcements/banner" element={<PlaceholderPage title="Banners" description="Manage banner announcements" />} />
-            <Route path="announcements/popups" element={<PlaceholderPage title="Pop-ups" description="Manage pop-up announcements" />} />
+            <Route path="announcements/banner" element={<Navigate to="/admin/announcements?tab=banner" replace />} />
+            <Route path="announcements/popups" element={<Navigate to="/admin/announcements?tab=popups" replace />} />
             
             {/* Admin & Roles */}
             <Route path="roles" element={<Roles />} />

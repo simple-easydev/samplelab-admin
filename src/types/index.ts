@@ -55,3 +55,16 @@ export interface AdminInvite {
   used: boolean;
   created_at: string;
 }
+
+export interface Banner {
+  id: string;
+  headline: string;
+  message: string;
+  cta_label: string | null;
+  cta_url: string | null;
+  audience: "all" | "logged-in";
+  active: boolean;
+  created_by: string | null;
+  created_at: string;
+  updated_at: string;
+}

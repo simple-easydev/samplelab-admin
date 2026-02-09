@@ -99,8 +99,8 @@ export const navigation: NavigationItem[] = [
     bgColor: "bg-orange-500/10",
     hoverColor: "hover:bg-orange-500/20",
     items: [
-      { name: "Banner", href: "/admin/announcements/banner", icon: LayoutTemplate },
-      { name: "Pop-ups", href: "/admin/announcements/popups", icon: MessageSquare },
+      { name: "Banner", href: "/admin/announcements?tab=banner", icon: LayoutTemplate },
+      { name: "Pop-ups", href: "/admin/announcements?tab=popups", icon: MessageSquare },
     ],
   },
   {
