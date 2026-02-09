@@ -4,6 +4,9 @@ export interface User {
   name: string | null;
   is_admin: boolean;
   role: "full_admin" | "content_editor";
+  status: "active" | "pending" | "disabled";
+  last_login: string | null;
+  invited_by: string | null;
   created_at: string;
   updated_at: string;
 }
