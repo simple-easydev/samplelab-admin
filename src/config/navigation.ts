@@ -29,6 +29,7 @@ export interface NavigationItem {
   bgColor?: string;
   hoverColor?: string;
   items?: SubNavigationItem[];
+  requiredRole?: "full_admin" | "content_editor";
 }
 
 export interface SubNavigationItem {
@@ -110,6 +111,7 @@ export const navigation: NavigationItem[] = [
     color: "text-red-500",
     bgColor: "bg-red-500/10",
     hoverColor: "hover:bg-red-500/20",
+    requiredRole: "full_admin",
   },
   {
     name: "Settings",
@@ -118,5 +120,6 @@ export const navigation: NavigationItem[] = [
     color: "text-gray-500",
     bgColor: "bg-gray-500/10",
     hoverColor: "hover:bg-gray-500/20",
+    requiredRole: "full_admin",
   },
 ];

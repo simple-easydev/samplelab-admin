@@ -1,5 +1,7 @@
 import { ChevronRight } from "lucide-react";
 import { Link, useLocation } from "react-router-dom";
+import { useState, useEffect } from "react";
+import { supabase } from "@/lib/supabase";
 import {
   Sidebar,
   SidebarContent,
@@ -27,6 +29,50 @@ import { navigation } from "@/config/navigation";
 export function AppSidebar() {
   const location = useLocation();
   const pathname = location.pathname;
+  const [userRole, setUserRole] = useState<string | null>(null);
+  const [roleLoaded, setRoleLoaded] = useState(false);
+
+  useEffect(() => {
+    async function getUserRole() {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session) {
+          setRoleLoaded(true);
+          return;
+        }
+
+        const { data: userData } = await supabase
+          .from("users")
+          .select("role")
+          .eq("id", session.user.id)
+          .single<{ role: string }>();
+
+        console.log("User role loaded:", userData?.role);
+        setUserRole(userData?.role || null);
+        setRoleLoaded(true);
+      } catch (error) {
+        console.error("Error fetching user role:", error);
+        setRoleLoaded(true);
+      }
+    }
+
+    getUserRole();
+  }, []);
+
+  // Filter navigation items based on user role
+  const filteredNavigation = roleLoaded 
+    ? navigation.filter(item => {
+        // If no role requirement, show to everyone
+        if (!item.requiredRole) return true;
+        // Hide items that require full_admin if user is not full_admin
+        if (item.requiredRole === "full_admin" && userRole !== "full_admin") {
+          console.log(`Hiding ${item.name} - requires full_admin, user is ${userRole}`);
+          return false;
+        }
+        // Only show if user has the required role
+        return userRole === item.requiredRole;
+      })
+    : []; // Show nothing while loading to prevent flash
 
   return (
     <Sidebar collapsible="icon" className="border-r-0">
@@ -64,7 +110,7 @@ export function AppSidebar() {
             <SidebarGroupLabel>Menu</SidebarGroupLabel>
             <SidebarGroupContent>
               <SidebarMenu className="gap-1">
-                {navigation.map((item) => {
+                {filteredNavigation.map((item) => {
                   const isActive =
                     pathname === item.href ||
                     (item.href !== "/admin" && pathname.startsWith(item.href));

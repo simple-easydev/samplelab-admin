@@ -1,6 +1,7 @@
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import SWRProvider from "@/components/SWRProvider";
 import AdminGuard from "@/components/AdminGuard";
+import RoleGuard from "@/components/RoleGuard";
 import { Toaster } from "@/components/ui/sonner";
 import Home from "@/pages/Home";
 import Login from "@/pages/Login";
@@ -68,9 +69,9 @@ export default function App() {
             <Route path="users" element={<Users />} />
             <Route path="users/:id" element={<UserDetail />} />
             
-            {/* Admin & Roles */}
-            <Route path="roles" element={<Roles />} />
-            <Route path="roles/invite" element={<Invite />} />
+            {/* Admin & Roles - Full Admin Only */}
+            <Route path="roles" element={<RoleGuard requiredRole="full_admin"><Roles /></RoleGuard>} />
+            <Route path="roles/invite" element={<RoleGuard requiredRole="full_admin"><Invite /></RoleGuard>} />
             
             {/* Plans & Credits Routes */}
             <Route path="plans" element={<Plans />} />
@@ -84,11 +85,8 @@ export default function App() {
             <Route path="announcements/banner" element={<Navigate to="/admin/announcements?tab=banner" replace />} />
             <Route path="announcements/popups" element={<Navigate to="/admin/announcements?tab=popups" replace />} />
             
-            {/* Admin & Roles */}
-            <Route path="roles" element={<Roles />} />
-            
-            {/* Settings */}
-            <Route path="settings" element={<Settings />} />
+            {/* Settings - Full Admin Only */}
+            <Route path="settings" element={<RoleGuard requiredRole="full_admin"><Settings /></RoleGuard>} />
           </Route>
 
           <Route path="*" element={<Navigate to="/" replace />} />
