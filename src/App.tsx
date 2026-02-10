@@ -20,11 +20,11 @@ import PackDetail from "@/pages/admin/library/PackDetail";
 import EditPack from "@/pages/admin/library/EditPack";
 import Creators from "@/pages/admin/Creators";
 import CreatorProfile from "@/pages/admin/CreatorProfile";
-import Plans from "@/pages/admin/Plans";
 import Announcements from "@/pages/admin/Announcements";
 import Roles from "@/pages/admin/Roles";
 import Settings from "@/pages/admin/Settings";
 import PlaceholderPage from "@/pages/admin/PlaceholderPage";
+import PlanTiers from "@/pages/admin/plans/PlanTiers";
 
 export default function App() {
   return (
@@ -74,8 +74,8 @@ export default function App() {
             <Route path="roles/invite" element={<RoleGuard requiredRole="full_admin"><Invite /></RoleGuard>} />
             
             {/* Plans & Credits Routes */}
-            <Route path="plans" element={<Plans />} />
-            <Route path="plans/tiers" element={<PlaceholderPage title="Plan Tiers" description="Manage subscription tiers" />} />
+            <Route path="plans" element={<Navigate to="/admin/plans/tiers" replace />} />
+            <Route path="plans/tiers" element={<PlanTiers />} />
             <Route path="plans/credit-rules" element={<PlaceholderPage title="Credit Rules" description="Configure credit rules" />} />
             <Route path="plans/trial-settings" element={<PlaceholderPage title="Trial Settings" description="Manage trial periods" />} />
             <Route path="plans/top-up-packs" element={<PlaceholderPage title="Top-up Packs" description="Manage credit top-up packs" />} />
