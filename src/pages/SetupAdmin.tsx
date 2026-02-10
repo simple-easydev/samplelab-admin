@@ -69,18 +69,28 @@ export default function SetupAdmin() {
     }
     setLoading(true);
     try {
-      const { data, error: fnError } = await supabase.functions.invoke("setup-admin", {
-        body: { token, fullName, password },
+      // Call Edge Function directly without auth headers
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+      const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+      
+      const response = await fetch(`${supabaseUrl}/functions/v1/setup-admin`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${supabaseAnonKey}`,
+          'apikey': supabaseAnonKey,
+        },
+        body: JSON.stringify({ token, fullName, password }),
       });
       
-      // Log full response for debugging
-      console.log("Edge Function response:", { data, error: fnError });
+      const data = await response.json();
       
-      if (fnError) {
-        // Try to get more details from the error
-        const errorMessage = fnError.message || fnError.toString();
-        console.error("Edge Function error details:", fnError);
-        throw new Error(errorMessage);
+      // Log full response for debugging
+      console.log("Edge Function response:", { status: response.status, data });
+      
+      if (!response.ok) {
+        console.error("Edge Function error:", data);
+        throw new Error(data.error || `Request failed with status ${response.status}`);
       }
       
       if (data?.error) {
