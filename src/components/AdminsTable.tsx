@@ -189,17 +189,19 @@ export default function AdminsTable({ admins, onRefresh }: AdminsTableProps) {
         }
         toast.success("Invitation deleted successfully");
       } else {
-      // Delete existing admin user
-      const { error } = await supabase
-        .from("users")
-        .delete()
-        .eq("id", selectedAdmin.id);
+        // Delete existing admin user
+        const { error } = await supabase
+          .from("users")
+          .delete()
+          .eq("id", selectedAdmin.id);
 
-      if (error) {
-        console.error("Delete admin error:", error);
-        throw error;
+        if (error) {
+          console.error("Delete admin error:", error);
+          throw error;
+        }
+        toast.success("Admin deleted successfully");
       }
-      toast.success("Admin deleted successfully");
+      
       onRefresh();
     } catch (error: any) {
       console.error("Error deleting admin:", error);
