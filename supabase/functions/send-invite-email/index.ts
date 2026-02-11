@@ -35,8 +35,8 @@ Deno.serve(async (req) => {
     const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const anonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
 
-    // Create client with user's token to verify they're authenticated
-    const userClient = createClient(supabaseUrl, anonKey, {
+    // Create client with user's token
+    const supabase = createClient(supabaseUrl, anonKey, {
       global: {
         headers: { Authorization: authHeader },
       },
@@ -46,7 +46,7 @@ Deno.serve(async (req) => {
       }
     });
 
-    const { data: { user }, error: userError } = await userClient.auth.getUser();
+    const { data: { user }, error: userError } = await supabase.auth.getUser();
     
     if (userError || !user) {
       console.error("Auth error:", userError);
@@ -56,15 +56,8 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Use service role client to verify user is an admin (bypass RLS)
-    const serviceClient = createClient(supabaseUrl, serviceKey, {
-      auth: {
-        autoRefreshToken: false,
-        persistSession: false,
-      }
-    });
-
-    const { data: userData, error: userDataError } = await serviceClient
+    // Verify user is a full admin
+    const { data: userData, error: userDataError } = await supabase
       .from("users")
       .select("is_admin, role")
       .eq("id", user.id)
@@ -84,6 +77,23 @@ Deno.serve(async (req) => {
       return new Response(
         JSON.stringify({ error: "Missing required fields: email, role, inviteLink" }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // Check if auth user already exists (requires service role)
+    const serviceClient = createClient(supabaseUrl, serviceKey, {
+      auth: {
+        autoRefreshToken: false,
+        persistSession: false,
+      }
+    });
+    
+    const { data: existingAuthUser } = await serviceClient.auth.admin.getUserByEmail(email);
+    
+    if (existingAuthUser?.user) {
+      return new Response(
+        JSON.stringify({ error: "User with this email already exists" }),
+        { status: 409, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 

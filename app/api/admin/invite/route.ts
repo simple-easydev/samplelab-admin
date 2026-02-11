@@ -37,14 +37,10 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Invalid role" }, { status: 400 });
     }
 
-    // Check if user already exists
-    const { data: existingUser } = await supabase
-      .from("users")
-      .select("id")
-      .eq("email", email)
-      .single();
-
-    if (existingUser) {
+    // Check if auth user already exists
+    const { data: existingAuthUser } = await supabase.auth.admin.getUserByEmail(email);
+    
+    if (existingAuthUser?.user) {
       return NextResponse.json({ error: "User with this email already exists" }, { status: 409 });
     }
 
