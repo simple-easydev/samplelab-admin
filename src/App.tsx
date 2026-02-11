@@ -26,6 +26,7 @@ import Settings from "@/pages/admin/Settings";
 import PlaceholderPage from "@/pages/admin/PlaceholderPage";
 import PlanTiers from "@/pages/admin/plans/PlanTiers";
 import CreditRules from "@/pages/admin/plans/CreditRules";
+import TrialSettings from "@/pages/admin/plans/TrialSettings";
 
 export default function App() {
   return (
@@ -78,7 +79,7 @@ export default function App() {
             <Route path="plans" element={<Navigate to="/admin/plans/tiers" replace />} />
             <Route path="plans/tiers" element={<PlanTiers />} />
             <Route path="plans/credit-rules" element={<CreditRules />} />
-            <Route path="plans/trial-settings" element={<PlaceholderPage title="Trial Settings" description="Manage trial periods" />} />
+            <Route path="plans/trials-settings" element={<TrialSettings />} />
             <Route path="plans/top-up-packs" element={<PlaceholderPage title="Top-up Packs" description="Manage credit top-up packs" />} />
             
             {/* Announcements Routes */}

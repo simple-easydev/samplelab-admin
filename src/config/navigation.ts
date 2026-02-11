@@ -88,7 +88,7 @@ export const navigation: NavigationItem[] = [
     items: [
       { name: "Plan tiers", href: "/admin/plans/tiers", icon: Layers },
       { name: "Credit rules", href: "/admin/plans/credit-rules", icon: ScrollText },
-      { name: "Trial settings", href: "/admin/plans/trial-settings", icon: Clock },
+      { name: "Trial settings", href: "/admin/plans/trials-settings", icon: Clock },
       { name: "Top-up packs", href: "/admin/plans/top-up-packs", icon: ShoppingCart },
     ],
   },
