@@ -58,28 +58,22 @@ Deno.serve(async (req) => {
     let userId: string;
 
     if (existingUser) {
-      // User record exists (from invitation) - update it
+      // User record exists (from invitation) - create auth user and update record
       userId = existingUser.id;
       console.log(`Updating existing user record: ${userId}`);
 
-      // Check if auth user exists
-      const { data: existingAuthUsers } = await supabase.auth.admin.listUsers();
-      const existingAuthUser = existingAuthUsers?.users?.find(u => u.email === invite.email);
+      // Create auth user
+      const { data: authData, error: authError } = await supabase.auth.admin.createUser({
+        email: invite.email,
+        password,
+        email_confirm: true,
+      });
 
-      if (!existingAuthUser) {
-        // Create auth user with the same ID as database record
-        const { data: authData, error: authError } = await supabase.auth.admin.createUser({
-          email: invite.email,
-          password,
-          email_confirm: true,
-        });
-
-        if (authError) {
-          return new Response(
-            JSON.stringify({ error: authError.message || "Failed to create account" }),
-            { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-          );
-        }
+      if (authError) {
+        return new Response(
+          JSON.stringify({ error: authError.message || "Failed to create account" }),
+          { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
       }
 
       // Update the pending user record
@@ -99,52 +93,47 @@ Deno.serve(async (req) => {
         );
       }
     } else {
-      // No existing database record - check if auth user exists or create one
-      const { data: existingAuthUsers } = await supabase.auth.admin.listUsers();
-      const existingAuthUser = existingAuthUsers?.users?.find(u => u.email === invite.email);
-
-      if (existingAuthUser) {
-        // Auth user exists - use their ID
-        userId = existingAuthUser.id;
-        console.log(`Using existing auth user: ${userId}`);
-      } else {
-        // Create new auth user
-        const { data: authData, error: authError } = await supabase.auth.admin.createUser({
-          email: invite.email,
-          password,
-          email_confirm: true,
-        });
-
-        if (authError) {
-          return new Response(
-            JSON.stringify({ error: authError.message || "Failed to create account" }),
-            { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-          );
-        }
-        if (!authData?.user?.id) {
-          return new Response(
-            JSON.stringify({ error: "Account created but user id missing" }),
-            { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-          );
-        }
-
-        userId = authData.user.id;
-      }
-
-      // Create database record
-      const { error: userError } = await supabase.rpc("create_admin_user_record", {
-        p_id: userId,
-        p_email: invite.email,
-        p_name: fullName,
-        p_role: invite.role,
+      // No existing database record - create auth user
+      const { data: authData, error: authError } = await supabase.auth.admin.createUser({
+        email: invite.email,
+        password,
+        email_confirm: true,
       });
 
+      if (authError) {
+        return new Response(
+          JSON.stringify({ error: authError.message || "Failed to create account" }),
+          { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+      if (!authData?.user?.id) {
+        return new Response(
+          JSON.stringify({ error: "Account created but user id missing" }),
+          { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      userId = authData.user.id;
+
+      // Update the trigger-created user record to admin status
+      const { error: userError } = await supabase
+        .from("users")
+        .update({
+          name: fullName,
+          is_admin: true,
+          role: invite.role,
+          status: 'active',
+          invited_by: invite.invited_by,
+          updated_at: new Date().toISOString()
+        })
+        .eq("id", userId);
+
       if (userError) {
-        // Clean up auth user if database creation fails
+        // Clean up auth user if database update fails
         await supabase.auth.admin.deleteUser(userId);
         return new Response(
           JSON.stringify({
-            error: userError.message || "Database error. Ensure migration 20260205000002 is applied.",
+            error: userError.message || "Failed to update user record to admin status",
           }),
           { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );

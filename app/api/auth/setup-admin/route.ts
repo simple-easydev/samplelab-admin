@@ -21,6 +21,7 @@ export async function POST(request: NextRequest) {
         email: string;
         role: string;
         expires_at: string;
+        invited_by: string | null;
       }>();
 
     if (inviteError || !invite) {
@@ -54,22 +55,25 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Create user record via SECURITY DEFINER function (bypasses RLS)
-    const { error: userError } = await supabase.rpc("create_admin_user_record", {
-      p_id: authData.user.id,
-      p_email: invite.email,
-      p_name: fullName,
-      p_role: invite.role,
-    });
+    // Update trigger-created user record to admin status
+    const { error: userError } = await supabase
+      .from("users")
+      .update({
+        name: fullName,
+        is_admin: true,
+        role: invite.role,
+        status: 'active',
+        invited_by: invite.invited_by,
+        updated_at: new Date().toISOString()
+      })
+      .eq("id", authData.user.id);
 
     if (userError) {
-      console.error("create_admin_user_record error:", userError.message, userError);
+      console.error("User update error:", userError.message, userError);
       await supabase.auth.admin.deleteUser(authData.user.id);
       return NextResponse.json(
         {
-          error:
-            userError.message ||
-            "Database error creating new user. Ensure migration 20260205000002 has been applied.",
+          error: userError.message || "Failed to update user record to admin status",
         },
         { status: 500 }
       );
