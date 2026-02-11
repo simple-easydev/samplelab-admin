@@ -23,10 +23,10 @@ import CreatorProfile from "@/pages/admin/CreatorProfile";
 import Announcements from "@/pages/admin/Announcements";
 import Roles from "@/pages/admin/Roles";
 import Settings from "@/pages/admin/Settings";
-import PlaceholderPage from "@/pages/admin/PlaceholderPage";
 import PlanTiers from "@/pages/admin/plans/PlanTiers";
 import CreditRules from "@/pages/admin/plans/CreditRules";
 import TrialSettings from "@/pages/admin/plans/TrialSettings";
+import TopUpPacks from "@/pages/admin/plans/TopUpPacks";
 
 export default function App() {
   return (
@@ -80,7 +80,7 @@ export default function App() {
             <Route path="plans/tiers" element={<PlanTiers />} />
             <Route path="plans/credit-rules" element={<CreditRules />} />
             <Route path="plans/trials-settings" element={<TrialSettings />} />
-            <Route path="plans/top-up-packs" element={<PlaceholderPage title="Top-up Packs" description="Manage credit top-up packs" />} />
+            <Route path="plans/top-up-packs" element={<TopUpPacks />} />
             
             {/* Announcements Routes */}
             <Route path="announcements" element={<Announcements />} />
