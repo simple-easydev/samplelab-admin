@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate, useSearchParams, Link } from "react-router-dom";
-import { Settings, Loader2, AlertCircle, Info } from "lucide-react";
+import { Loader2, AlertCircle, Info } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -70,10 +70,13 @@ export default function Login() {
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
           <div className="flex justify-center mb-4">
-            <Settings className="h-12 w-12 text-primary" />
+            <img
+              src="/THE-SAMPLE-LAB-LOGO-crop_e96a00ec-e755-4d60-bde8-fd6192182ff8_440x.png-2 2.png"
+              alt="SampleLab Logo"
+              className="h-16 object-contain"
+            />
           </div>
-          <CardTitle className="text-3xl">SampleLab Admin</CardTitle>
-          <CardDescription>Sign in to access the admin panel</CardDescription>
+        
         </CardHeader>
 
         <CardContent className="space-y-6">
