@@ -60,22 +60,22 @@ export default function RoleGuard({ children, requiredRole }: RoleGuardProps) {
 
   if (status === "loading") {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <Card className="w-full max-w-md">
-          <CardContent className="pt-6 text-center space-y-4">
+      <div className="flex justify-center">
+        <div className="w-full max-w-md">
+          <div className="pt-6 text-center space-y-4">
             <Loader2 className="h-12 w-12 mx-auto text-primary animate-spin" />
             <p className="text-muted-foreground">Verifying permissions...</p>
-          </CardContent>
-        </Card>
+          </div>
+        </div>
       </div>
     );
   }
 
   if (status === "unauthorized") {
     return (
-      <div className="min-h-screen flex items-center justify-center p-4">
-        <Card className="w-full max-w-md">
-          <CardContent className="pt-6 text-center space-y-4">
+      <div className="min-h-screen flex justify-center p-4">
+        <div className="w-full max-w-md">
+          <div className="pt-6 text-center space-y-4">
             <ShieldAlert className="h-16 w-16 mx-auto text-destructive" />
             <div>
               <h2 className="text-2xl font-bold">Access Denied</h2>
@@ -94,8 +94,8 @@ export default function RoleGuard({ children, requiredRole }: RoleGuardProps) {
             <Button onClick={() => window.history.back()} className="w-full">
               Go Back
             </Button>
-          </CardContent>
-        </Card>
+          </div>
+        </div>
       </div>
     );
   }
