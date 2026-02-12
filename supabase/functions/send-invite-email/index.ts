@@ -80,17 +80,14 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Check if auth user already exists (requires service role)
-    const serviceClient = createClient(supabaseUrl, serviceKey, {
-      auth: {
-        autoRefreshToken: false,
-        persistSession: false,
-      }
-    });
-    
-    const { data: existingAuthUser } = await serviceClient.auth.admin.getUserByEmail(email);
-    
-    if (existingAuthUser?.user) {
+    // Check if user already exists (public.users table; no auth.admin.getUserByEmail in supabase-js)
+    const { data: existingUser } = await supabase
+      .from("users")
+      .select("id")
+      .eq("email", email)
+      .maybeSingle();
+
+    if (existingUser) {
       return new Response(
         JSON.stringify({ error: "User with this email already exists" }),
         { status: 409, headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -110,7 +107,7 @@ Deno.serve(async (req) => {
 
     // Compose email
     const { data, error } = await resend.emails.send({
-      from: "The Sample Lab <noreply@samplelab.com>", // Update with your verified domain
+      from: "The Sample Lab <onboarding@resend.dev>", // Update with your verified domain
       to: [email],
       subject: "You've been invited to The Sample Lab Admin Panel",
       html: `
