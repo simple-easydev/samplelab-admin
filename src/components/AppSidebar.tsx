@@ -5,7 +5,6 @@ import { supabase } from "@/lib/supabase";
 import {
   Sidebar,
   SidebarContent,
-  SidebarFooter,
   SidebarGroup,
   SidebarGroupContent,
   SidebarGroupLabel,
@@ -105,11 +104,11 @@ export function AppSidebar() {
         </SidebarHeader>
 
         {/* Content */}
-        <SidebarContent className="px-2 py-4">
+        <SidebarContent>
           <SidebarGroup>
             <SidebarGroupLabel>Menu</SidebarGroupLabel>
             <SidebarGroupContent>
-              <SidebarMenu className="gap-1">
+              <SidebarMenu>
                 {filteredNavigation.map((item) => {
                   const isActive =
                     pathname === item.href ||
@@ -208,23 +207,6 @@ export function AppSidebar() {
             </SidebarGroupContent>
           </SidebarGroup>
         </SidebarContent>
-
-        {/* Footer */}
-        <SidebarFooter className={`border-t ${sidebarTheme.footer.border} bg-gradient-to-r ${sidebarTheme.footer.background} ${sidebarTheme.footer.darkBackground}`}>
-          <SidebarMenu>
-            <SidebarMenuItem>
-              <SidebarMenuButton className="hover:bg-white/50 dark:hover:bg-slate-800/50 group-data-[collapsible=icon]:!p-2">
-                <div className={`flex aspect-square size-8 items-center justify-center rounded-full bg-gradient-to-br ${sidebarTheme.avatar.gradient} text-white text-sm font-bold shadow-md shrink-0`}>
-                  A
-                </div>
-                <div className="flex flex-col gap-0.5 leading-none group-data-[collapsible=icon]:hidden">
-                  <span className="font-medium text-sm">Admin User</span>
-                  <span className="text-xs text-muted-foreground">admin@samplelab.com</span>
-                </div>
-              </SidebarMenuButton>
-            </SidebarMenuItem>
-          </SidebarMenu>
-        </SidebarFooter>
 
         <SidebarRail />
       </div>
