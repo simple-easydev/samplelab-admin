@@ -88,6 +88,7 @@ Deno.serve(async (req) => {
           real_email: trimmedEmail,
           ...(name ? { name: name.trim() } : {}),
         },
+        redirectTo: "http://localhost:3001/login",
       },
     });
 
