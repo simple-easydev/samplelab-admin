@@ -14,7 +14,7 @@ All endpoints support **CORS** and accept `Content-Type: application/json`. Use 
 
 ## 1. Sign Up (Customers only)
 
-Creates a **customer** account only. Does not use the admin `users` table: creates an auth user and a row in **`public.customers`** (via trigger). For admin accounts, use the invite flow and **setup-admin** instead. Supabase sends the confirmation email when "Confirm email" is enabled in Auth settings.
+Creates a **customer** account with its **own auth account and password** (separate from admin). Auth stores the customer as `customer_<email>` (e.g. `customer_john@example.com`) so the same email can be admin (e.g. `john@example.com`) and customer with **different passwords**. The real email is stored in **`public.customers.email`**. Supabase sends the confirmation email when "Confirm email" is enabled.
 
 | | |
 |---|---|
@@ -51,11 +51,23 @@ Creates a **customer** account only. Does not use the admin `users` table: creat
 
 | Status | Description | Body |
 |--------|-------------|------|
-| **201** | Account created | `{ "success": true, "message": "...", "user_id": "<uuid>" }` |
+| **201** | Customer account created | `{ "success": true, "message": "...", "user_id": "<uuid>" }` |
 | **400** | Bad request | `{ "error": "Missing or invalid email" }` or invalid JSON / password / email format |
-| **409** | Email already registered | `{ "error": "An account with this email already exists" }` |
-| **422** | Auth error (e.g. already registered) | `{ "error": "<message>" }` |
+| **409** | Customer account already exists for this email | `{ "error": "A customer account with this email already exists" }` |
+| **422** | Auth error | `{ "error": "<message>" }` |
 | **500** | Server error | `{ "error": "<message>" }` |
+
+### Customer login (different password from admin)
+
+Customers have a separate auth account. Use the **prefixed** email when signing in:
+
+```javascript
+// Customer sign-in: prepend "customer_" to the email they entered
+await supabase.auth.signInWithPassword({
+  email: `customer_${email.trim().toLowerCase()}`,
+  password: customerPassword,
+});
+```
 
 ### Example: `fetch`
 

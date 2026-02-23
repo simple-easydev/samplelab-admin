@@ -10,6 +10,8 @@ const corsHeaders = {
 
 const MIN_PASSWORD_LENGTH = 8;
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+/** Auth email prefix for customers so same email can have separate admin vs customer password */
+const CUSTOMER_EMAIL_PREFIX = "customer_";
 
 function jsonResponse(body: object, status: number) {
   return new Response(JSON.stringify(body), {
@@ -62,7 +64,7 @@ Deno.serve(async (req) => {
       },
     });
 
-    // Check if email already exists in customers (customer sign-up only; no users table)
+    // Block only if this email already has a customer profile (same email can be admin and customer with different passwords)
     const { data: existingCustomer } = await supabase
       .from("customers")
       .select("id")
@@ -70,25 +72,26 @@ Deno.serve(async (req) => {
       .maybeSingle();
 
     if (existingCustomer) {
-      return jsonResponse({ error: "An account with this email already exists" }, 409);
+      return jsonResponse({ error: "A customer account with this email already exists" }, 409);
     }
 
-    // Create auth user. Trigger (handle_new_user) will create public.customers row only
-    // because we set is_customer: true. No public.users row is created.
+    // Use prefixed auth email so customer has a separate auth account (and password) from admin
+    const authEmail = CUSTOMER_EMAIL_PREFIX + trimmedEmail;
     const { data: authData, error: authError } = await supabase.auth.admin.createUser({
-      email: trimmedEmail,
+      email: authEmail,
       password,
       email_confirm: false,
       user_metadata: {
         is_customer: true,
+        real_email: trimmedEmail,
         ...(name ? { name: name.trim() } : {}),
       },
     });
 
     if (authError) {
       console.error("Sign-up createUser error:", authError);
-      if (authError.message?.toLowerCase().includes("already been registered")) {
-        return jsonResponse({ error: "An account with this email already exists" }, 409);
+      if (authError.message?.toLowerCase().includes("already been registered") || authError.message?.toLowerCase().includes("already exists")) {
+        return jsonResponse({ error: "A customer account with this email already exists" }, 409);
       }
       return jsonResponse(
         { error: authError.message || "Failed to create account" },
@@ -100,7 +103,6 @@ Deno.serve(async (req) => {
       return jsonResponse({ error: "Account could not be created" }, 500);
     }
 
-    // Trigger on auth.users creates public.customers row only (handle_new_user with is_customer: true)
     return jsonResponse(
       {
         success: true,
