@@ -105,9 +105,10 @@ Deno.serve(async (req) => {
     // Determine role display name
     const roleDisplay = role === "full_admin" ? "Super Admin" : "Content Admin";
 
-    // Compose email
+    // From: use env RESEND_FROM_EMAIL if set (e.g. "The Sample Lab <noreply@thesamplelab.app>"), else default
+    const fromAddress = Deno.env.get("RESEND_FROM_EMAIL") || "The Sample Lab <noreply@thesamplelab.app>";
     const { data, error } = await resend.emails.send({
-      from: "The Sample Lab <onboarding@resend.dev>", // Update with your verified domain
+      from: fromAddress,
       to: [email],
       subject: "You've been invited to The Sample Lab Admin Panel",
       html: `
