@@ -126,6 +126,12 @@ enable_confirmations = false
 # # or any other third-party OIDC providers.
 # url = ""
 
+# Edge Functions
+[functions.send-invite-email]
+verify_jwt = false
+[functions.sign-up]
+verify_jwt = false
+
 [analytics]
 enabled = false
 port = 54327
