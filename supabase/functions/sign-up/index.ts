@@ -1,7 +1,8 @@
 // Supabase Edge Function: Customer sign-up only.
 // Does NOT use public.users or admin auth flow. Creates auth.users + public.customers
-// via trigger (handle_new_user with is_customer: true). For admin users, use invite + setup-admin.
+// via trigger (handle_new_user with is_customer: true). Sends confirmation email via Resend.
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { Resend } from "npm:resend@2.0.0";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -77,19 +78,21 @@ Deno.serve(async (req) => {
 
     // Use prefixed auth email so customer has a separate auth account (and password) from admin
     const authEmail = CUSTOMER_EMAIL_PREFIX + trimmedEmail;
-    const { data: authData, error: authError } = await supabase.auth.admin.createUser({
+    const { data: linkData, error: authError } = await supabase.auth.admin.generateLink({
+      type: "signup",
       email: authEmail,
       password,
-      email_confirm: false,
-      user_metadata: {
-        is_customer: true,
-        real_email: trimmedEmail,
-        ...(name ? { name: name.trim() } : {}),
+      options: {
+        data: {
+          is_customer: true,
+          real_email: trimmedEmail,
+          ...(name ? { name: name.trim() } : {}),
+        },
       },
     });
 
     if (authError) {
-      console.error("Sign-up createUser error:", authError);
+      console.error("Sign-up generateLink error:", authError);
       if (authError.message?.toLowerCase().includes("already been registered") || authError.message?.toLowerCase().includes("already exists")) {
         return jsonResponse({ error: "A customer account with this email already exists" }, 409);
       }
@@ -99,16 +102,56 @@ Deno.serve(async (req) => {
       );
     }
 
-    if (!authData?.user?.id) {
+    const user = linkData?.user;
+    const confirmationLink =
+      (linkData as { properties?: { action_link?: string } })?.properties?.action_link ?? null;
+
+    if (!user?.id) {
       return jsonResponse({ error: "Account could not be created" }, 500);
+    }
+
+    // Send confirmation email via Resend (to real email) so user can confirm and sign in
+    const resendApiKey = Deno.env.get("RESEND_API_KEY");
+    const fromAddress = Deno.env.get("RESEND_FROM_EMAIL") || "The Sample Lab <noreply@thesamplelab.app>";
+    if (resendApiKey && confirmationLink) {
+      try {
+        const resend = new Resend(resendApiKey);
+        const { error: sendError } = await resend.emails.send({
+          from: fromAddress,
+          to: [trimmedEmail],
+          subject: "Confirm your email – The Sample Lab",
+          html: `
+            <!DOCTYPE html>
+            <html>
+              <head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>Confirm your email</title></head>
+              <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
+                <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 24px; border-radius: 10px 10px 0 0; text-align: center;">
+                  <h1 style="color: white; margin: 0; font-size: 24px;">The Sample Lab</h1>
+                  <p style="color: rgba(255,255,255,0.9); margin: 8px 0 0 0;">Confirm your email</p>
+                </div>
+                <div style="background: #fff; padding: 32px; border: 1px solid #e5e7eb; border-top: none; border-radius: 0 0 10px 10px;">
+                  <p style="margin-top: 0;">Thanks for signing up. Please confirm your email address by clicking the button below.</p>
+                  <p style="margin: 24px 0;">
+                    <a href="${confirmationLink}" style="display: inline-block; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 14px 28px; text-decoration: none; border-radius: 8px; font-weight: 600;">Confirm email</a>
+                  </p>
+                  <p style="color: #6b7280; font-size: 14px;">If you didn't create an account, you can ignore this email.</p>
+                  <p style="color: #9ca3af; font-size: 12px; word-break: break-all;">Or copy and paste this link: ${confirmationLink}</p>
+                </div>
+              </body>
+            </html>
+          `,
+        });
+        if (sendError) console.error("Resend confirmation email error:", sendError);
+      } catch (e) {
+        console.error("Send confirmation email failed:", e);
+      }
     }
 
     return jsonResponse(
       {
         success: true,
-        message:
-          "Account created. A confirmation email will be sent if email confirmation is enabled in your project.",
-        user_id: authData.user.id,
+        message: "Account created. Please check your email to confirm your address.",
+        user_id: user.id,
       },
       201
     );

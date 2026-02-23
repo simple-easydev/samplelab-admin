@@ -14,7 +14,7 @@ All endpoints support **CORS** and accept `Content-Type: application/json`. Use 
 
 ## 1. Sign Up (Customers only)
 
-Creates a **customer** account with its **own auth account and password** (separate from admin). Auth stores the customer as `customer_<email>` (e.g. `customer_john@example.com`) so the same email can be admin (e.g. `john@example.com`) and customer with **different passwords**. The real email is stored in **`public.customers.email`**. Supabase sends the confirmation email when "Confirm email" is enabled.
+Creates a **customer** account with its **own auth account and password** (separate from admin). Auth stores the customer as `customer_<email>` (e.g. `customer_john@example.com`) so the same email can be admin and customer with **different passwords**. The real email is stored in **`public.customers.email`**. A **confirmation email** is sent via Resend to the user's email with a link to confirm their address; after confirming, they can sign in with their customer email (prefixed) and password.
 
 | | |
 |---|---|
