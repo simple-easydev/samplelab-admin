@@ -3,6 +3,7 @@
 ## 📁 Files Created
 
 ### Edge Functions
+- `supabase/functions/get-stripe-products/index.ts` - Fetches products from Stripe
 - `supabase/functions/create-checkout-session/index.ts` - Creates Stripe checkout sessions
 - `supabase/functions/stripe-webhook/index.ts` - Handles Stripe webhooks
 
@@ -19,6 +20,7 @@
 supabase db push
 
 # 2. Deploy edge functions
+supabase functions deploy get-stripe-products
 supabase functions deploy create-checkout-session
 supabase functions deploy stripe-webhook
 
@@ -60,7 +62,16 @@ SUPABASE_SERVICE_ROLE_KEY=your_service_role_key
    - Copy "Signing secret" → Set as `STRIPE_WEBHOOK_SECRET`
 
 ## 💻 Frontend Integration
+Fetch Available Products
 
+```typescript
+const { data, error } = await supabase.functions.invoke('get-stripe-products');
+
+const products = data.products; // Array of products with prices
+// Display on your pricing page
+```
+
+### 2. 
 ### 1. Create Checkout Session (Start Free Trial)
 
 ```typescript
@@ -69,7 +80,7 @@ const { data, error } = await supabase.functions.invoke('create-checkout-session
     priceId: 'price_1ABC123',
     successUrl: `${window.location.origin}/subscription/success`,
     cancelUrl: `${window.location.origin}/subscription/cancel`,
-    trialDays: 3,
+    3rialDays: 3,
   },
 });
 
@@ -94,7 +105,7 @@ const { data: customer } = await supabase
 const tier = customer?.subscription_tier || 'free';
 ```
 
-### 3. Listen for Subscription Changes
+### 4. Listen for Subscription Changes
 
 ```typescript
 const channel = supabase
@@ -139,20 +150,26 @@ function mapStripePriceToTier(priceId: string | undefined): string {
 }
 ```
 
-## 🔄 Event Flow
+## 🔄 Complete Event Flow
 
 ```
-Frontend → create-checkout-session → Stripe Checkout
-                                           ↓
-                                    Customer pays
-                                           ↓
-                                    Stripe Webhook
-                                           ↓
-                                    stripe-webhook function
-                                           ↓
-                                    Update subscriptions table
-                                           ↓
-                                    Frontend reads status
+1. Fetch Products
+   Frontend → get-stripe-products → Returns products & prices
+        ↓
+2. User selects plan
+   Frontend → create-checkout-session → Stripe Checkout
+        ↓
+3. Customer enters card
+   Stripe Checkout (no charge for trial period)
+        ↓
+4. Checkout completed
+   Stripe fires webhook → stripe-webhook function
+        ↓
+5. Webhook updates database
+   Update subscriptions table in Supabase
+        ↓
+6. Frontend reflects changes
+   Read subscription status from database
 ```
 
 ## 🧪 Testing
@@ -178,7 +195,9 @@ stripe trigger customer.subscription.updated
 |-------|----------|
 | Signature verification failed | Check `STRIPE_WEBHOOK_SECRET` matches Stripe Dashboard |
 | Customer not found | Ensure `stripe_customer_id` is stored after checkout |
-| Missing environment variables | Run `supabase secrets list` to verify |
+| Get Products Guide: [GET_STRIPE_PRODUCTS_GUIDE.md](./GET_STRIPE_PRODUCTS_GUIDE.md)
+- Stripe Webhooks: https://stripe.com/docs/webhooks
+- Stripe Products API: https://stripe.com/docs/api/productcrets list` to verify |
 | Webhook not received | Check Stripe Dashboard → Webhooks → Attempts |
 
 ## 📚 Documentation Links
