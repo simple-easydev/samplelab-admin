@@ -213,31 +213,33 @@ async function handleSubscriptionCreatedOrUpdated(
         .from("customers")
         .update({
           credit_balance: newBalance,
-          onboarding_completed: true,
           updated_at: new Date().toISOString(),
         })
         .eq("id", customer.id);
 
       if (creditError) {
-        console.error("Error updating customer credit balance and onboarding:", creditError);
+        console.error("Error updating customer credit balance:", creditError);
       } else {
-        console.log(`Successfully added 50 credits and marked onboarding complete. New balance: ${newBalance}`);
+        console.log(`Successfully added 50 credits. New balance: ${newBalance}`);
       }
-    } else if (isActive) {
-      // For trial subscriptions, just mark onboarding as completed
-      console.log("Marking onboarding completed for trial subscription:", customer.id);
-      const { error: onboardingError } = await supabase
-        .from("customers")
-        .update({
-          onboarding_completed: true,
-          updated_at: new Date().toISOString(),
-        })
-        .eq("id", customer.id);
+    }
 
-      if (onboardingError) {
-        console.error("Error updating customer onboarding:", onboardingError);
+    // Update auth user metadata to mark onboarding as completed for all active subscriptions
+    if (customer.user_id && isActive) {
+      console.log("Updating user metadata for onboarding completion:", customer.user_id);
+      const { error: metadataError } = await supabase.auth.admin.updateUserById(
+        customer.user_id,
+        {
+          user_metadata: {
+            onboarding_completed: true,
+          },
+        }
+      );
+
+      if (metadataError) {
+        console.error("Error updating user metadata:", metadataError);
       } else {
-        console.log("Successfully marked onboarding complete for trial");
+        console.log("Successfully updated user onboarding_completed to true");
       }
     }
   }
