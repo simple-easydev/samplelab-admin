@@ -76,7 +76,7 @@ Deno.serve(async (req) => {
       priceId?: string;
       successUrl?: string;
       cancelUrl?: string;
-      trialDays?: number;
+      isTrial?: boolean;
     };
     try {
       body = await req.json();
@@ -88,8 +88,11 @@ Deno.serve(async (req) => {
       priceId,
       successUrl = "http://localhost:3001/subscription/success",
       cancelUrl = "http://localhost:3001/subscription/cancel",
-      trialDays = 3,
+      isTrial = false,
     } = body;
+
+    // If trial is enabled, it's always 3 days - duration cannot be overridden by frontend
+    const trialPeriodDays = isTrial ? 3 : undefined;
 
     if (!priceId || typeof priceId !== "string") {
       return jsonResponse({ error: "Missing or invalid priceId" }, 400);
@@ -170,7 +173,7 @@ Deno.serve(async (req) => {
         },
       ],
       subscription_data: {
-        trial_period_days: trialDays,
+        ...(trialPeriodDays !== undefined && { trial_period_days: trialPeriodDays }),
         metadata: {
           supabase_customer_id: customer.id,
         },
