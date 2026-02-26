@@ -37,7 +37,6 @@ Deno.serve(async (req) => {
 
     const stripe = new Stripe(stripeSecretKey, {
       apiVersion: "2026-01-28.clover",
-      httpClient: Stripe.createFetchHttpClient(),
     });
 
     // Get the signature from headers
@@ -153,7 +152,7 @@ async function handleCheckoutSessionCompleted(
   // Find customer by stripe_customer_id
   const { data: customer, error: customerError } = await supabase
     .from("customers")
-    .select("id, email")
+    .select("id, email, credit_balance")
     .eq("stripe_customer_id", customerId)
     .maybeSingle();
 
@@ -164,6 +163,28 @@ async function handleCheckoutSessionCompleted(
 
   // Create or update subscription record
   await upsertSubscription(supabase, customer.id, subscription);
+
+  // Check if this was a non-trial paid plan and award 50 credits
+  const isTrial = session.metadata?.is_trial === "true";
+  if (!isTrial && session.payment_status === "paid") {
+    console.log("Awarding 50 credits to customer for paid plan:", customer.id);
+    const currentBalance = customer.credit_balance || 0;
+    const newBalance = currentBalance + 50;
+
+    const { error: creditError } = await supabase
+      .from("customers")
+      .update({
+        credit_balance: newBalance,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", customer.id);
+
+    if (creditError) {
+      console.error("Error updating customer credit balance:", creditError);
+    } else {
+      console.log(`Successfully added 50 credits. New balance: ${newBalance}`);
+    }
+  }
 }
 
 // Handle subscription created or updated
@@ -285,6 +306,15 @@ async function upsertSubscription(
   const priceId = subscription.items.data[0]?.price.id;
   const tier = mapStripePriceToTier(priceId);
 
+  // Validate timestamps before converting
+  const currentPeriodStart = subscription.current_period_start
+    ? new Date(subscription.current_period_start * 1000).toISOString()
+    : new Date().toISOString();
+  
+  const currentPeriodEnd = subscription.current_period_end
+    ? new Date(subscription.current_period_end * 1000).toISOString()
+    : new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(); // Default to 30 days from now
+
   const subscriptionData = {
     customer_id: customerId,
     stripe_subscription_id: subscription.id,
@@ -292,8 +322,8 @@ async function upsertSubscription(
     tier: tier,
     status: subscription.status === "active" || subscription.status === "trialing" ? "active" : subscription.status,
     stripe_status: subscription.status,
-    current_period_start: new Date(subscription.current_period_start * 1000).toISOString(),
-    current_period_end: new Date(subscription.current_period_end * 1000).toISOString(),
+    current_period_start: currentPeriodStart,
+    current_period_end: currentPeriodEnd,
     cancel_at_period_end: subscription.cancel_at_period_end,
     trial_start: subscription.trial_start
       ? new Date(subscription.trial_start * 1000).toISOString()

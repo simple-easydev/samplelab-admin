@@ -35,7 +35,6 @@ Deno.serve(async (req) => {
 
     const stripe = new Stripe(stripeSecretKey, {
       apiVersion: "2026-01-28.clover",
-      httpClient: Stripe.createFetchHttpClient(),
     });
 
     // Initialize Supabase client
@@ -176,12 +175,14 @@ Deno.serve(async (req) => {
         ...(trialPeriodDays !== undefined && { trial_period_days: trialPeriodDays }),
         metadata: {
           supabase_customer_id: customer.id,
+          is_trial: isTrial.toString(),
         },
       },
       success_url: successUrl,
       cancel_url: cancelUrl,
       metadata: {
         supabase_customer_id: customer.id,
+        is_trial: isTrial.toString(),
       },
     });
 
