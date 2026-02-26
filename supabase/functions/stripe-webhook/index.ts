@@ -152,7 +152,7 @@ async function handleCheckoutSessionCompleted(
   // Find customer by stripe_customer_id
   const { data: customer, error: customerError } = await supabase
     .from("customers")
-    .select("id, email, credit_balance")
+    .select("id, email, credit_balance, user_id")
     .eq("stripe_customer_id", customerId)
     .maybeSingle();
 
@@ -183,6 +183,25 @@ async function handleCheckoutSessionCompleted(
       console.error("Error updating customer credit balance:", creditError);
     } else {
       console.log(`Successfully added 50 credits. New balance: ${newBalance}`);
+    }
+  }
+
+  // Update auth user metadata to mark onboarding as completed
+  if (customer.user_id && session.payment_status === "paid") {
+    console.log("Updating user metadata for onboarding completion:", customer.user_id);
+    const { error: metadataError } = await supabase.auth.admin.updateUserById(
+      customer.user_id,
+      {
+        user_metadata: {
+          onboarding_completed: true,
+        },
+      }
+    );
+
+    if (metadataError) {
+      console.error("Error updating user metadata:", metadataError);
+    } else {
+      console.log("Successfully updated user onboarding_completed to true");
     }
   }
 }
