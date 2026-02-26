@@ -152,7 +152,7 @@ async function handleCheckoutSessionCompleted(
   // Find customer by stripe_customer_id
   const { data: customer, error: customerError } = await supabase
     .from("customers")
-    .select("id, email, credit_balance, user_id")
+    .select("id, email")
     .eq("stripe_customer_id", customerId)
     .maybeSingle();
 
@@ -163,47 +163,6 @@ async function handleCheckoutSessionCompleted(
 
   // Create or update subscription record
   await upsertSubscription(supabase, customer.id, subscription);
-
-  // Check if this was a non-trial paid plan and award 50 credits
-  const isTrial = session.metadata?.is_trial === "true";
-  if (!isTrial && session.payment_status === "paid") {
-    console.log("Awarding 50 credits to customer for paid plan:", customer.id);
-    const currentBalance = customer.credit_balance || 0;
-    const newBalance = currentBalance + 50;
-
-    const { error: creditError } = await supabase
-      .from("customers")
-      .update({
-        credit_balance: newBalance,
-        updated_at: new Date().toISOString(),
-      })
-      .eq("id", customer.id);
-
-    if (creditError) {
-      console.error("Error updating customer credit balance:", creditError);
-    } else {
-      console.log(`Successfully added 50 credits. New balance: ${newBalance}`);
-    }
-  }
-
-  // Update auth user metadata to mark onboarding as completed
-  if (customer.user_id && session.payment_status === "paid") {
-    console.log("Updating user metadata for onboarding completion:", customer.user_id);
-    const { error: metadataError } = await supabase.auth.admin.updateUserById(
-      customer.user_id,
-      {
-        user_metadata: {
-          onboarding_completed: true,
-        },
-      }
-    );
-
-    if (metadataError) {
-      console.error("Error updating user metadata:", metadataError);
-    } else {
-      console.log("Successfully updated user onboarding_completed to true");
-    }
-  }
 }
 
 // Handle subscription created or updated
@@ -218,7 +177,7 @@ async function handleSubscriptionCreatedOrUpdated(
   // Find customer by stripe_customer_id
   const { data: customer, error: customerError } = await supabase
     .from("customers")
-    .select("id")
+    .select("id, credit_balance, user_id")
     .eq("stripe_customer_id", customerId)
     .maybeSingle();
 
@@ -227,8 +186,61 @@ async function handleSubscriptionCreatedOrUpdated(
     return;
   }
 
+  // Check if this is a new subscription (not an update)
+  const { data: existingSubscription } = await supabase
+    .from("subscriptions")
+    .select("id")
+    .eq("stripe_subscription_id", subscription.id)
+    .maybeSingle();
+
+  const isNewSubscription = !existingSubscription;
+
   // Upsert subscription record
   await upsertSubscription(supabase, customer.id, subscription);
+
+  // Only process credits and metadata for NEW subscriptions
+  if (isNewSubscription) {
+    // Check if this was a non-trial paid plan and award 50 credits
+    const isTrial = subscription.metadata?.is_trial === "true";
+    const isActive = subscription.status === "active";
+
+    if (!isTrial && isActive) {
+      console.log("Awarding 50 credits to customer for paid plan:", customer.id);
+      const currentBalance = customer.credit_balance || 0;
+      const newBalance = currentBalance + 50;
+
+      const { error: creditError } = await supabase
+        .from("customers")
+        .update({
+          credit_balance: newBalance,
+          onboarding_completed: true,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", customer.id);
+
+      if (creditError) {
+        console.error("Error updating customer credit balance and onboarding:", creditError);
+      } else {
+        console.log(`Successfully added 50 credits and marked onboarding complete. New balance: ${newBalance}`);
+      }
+    } else if (isActive) {
+      // For trial subscriptions, just mark onboarding as completed
+      console.log("Marking onboarding completed for trial subscription:", customer.id);
+      const { error: onboardingError } = await supabase
+        .from("customers")
+        .update({
+          onboarding_completed: true,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", customer.id);
+
+      if (onboardingError) {
+        console.error("Error updating customer onboarding:", onboardingError);
+      } else {
+        console.log("Successfully marked onboarding complete for trial");
+      }
+    }
+  }
 }
 
 // Handle subscription deleted
