@@ -51,6 +51,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { supabase } from "@/lib/supabase";
 
 interface User {
   id: string;
@@ -99,67 +100,60 @@ export default function UsersPage() {
       setIsLoading(true);
       setError(null);
 
-      // TODO: Replace with actual customers table query
-      // For now, using mock data structure
-      const mockUsers: User[] = [
-        {
-          id: "1",
-          name: "John Doe",
-          email: "john@example.com",
-          avatar_url: null,
-          subscription_status: "Active",
-          plan_tier: "Pro",
-          credits_remaining: 150,
-          downloads_30d: 45,
-          last_active: new Date().toISOString(),
-          is_active: true,
-          created_at: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString(),
-        },
-        {
-          id: "2",
-          name: "Jane Smith",
-          email: "jane@example.com",
-          avatar_url: null,
-          subscription_status: "Trialing",
-          plan_tier: "Starter",
-          credits_remaining: 50,
-          downloads_30d: 12,
-          last_active: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(),
-          is_active: true,
-          created_at: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString(),
-        },
-        {
-          id: "3",
-          name: "Mike Johnson",
-          email: "mike@example.com",
-          avatar_url: null,
-          subscription_status: "Canceled",
-          plan_tier: null,
-          credits_remaining: 5,
-          downloads_30d: 2,
-          last_active: new Date(Date.now() - 15 * 24 * 60 * 60 * 1000).toISOString(),
-          is_active: true,
-          created_at: new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString(),
-        },
-        {
-          id: "4",
-          name: "Sarah Williams",
-          email: "sarah@example.com",
-          avatar_url: null,
-          subscription_status: "None",
-          plan_tier: null,
-          credits_remaining: 0,
-          downloads_30d: 0,
-          last_active: new Date(Date.now() - 60 * 24 * 60 * 60 * 1000).toISOString(),
-          is_active: false,
-          created_at: new Date(Date.now() - 120 * 24 * 60 * 60 * 1000).toISOString(),
-        },
-      ];
+      const { data: customersData, error: fetchError } = await supabase
+        .from("customers")
+        .select(`
+          id,
+          email,
+          name,
+          subscription_tier,
+          credit_balance,
+          status,
+          created_at,
+          updated_at,
+          subscriptions (status, stripe_status, trial_end)
+        `)
+        .order("created_at", { ascending: false });
 
-      setUsers(mockUsers);
+      if (fetchError) {
+        throw fetchError;
+      }
+
+      const now = new Date().toISOString();
+      const mapped: User[] = (customersData ?? []).map((c: any) => {
+        const subs = (c.subscriptions ?? []) as { status: string; stripe_status: string | null; trial_end: string | null }[];
+        const activeSub = subs.find((s) => s.status === "active" || s.stripe_status === "trialing");
+        const hasTrialing = activeSub?.stripe_status === "trialing" && activeSub?.trial_end && activeSub.trial_end > now;
+        const hasActive = activeSub != null;
+        const hasCanceled = subs.some((s) => s.status === "canceled" || s.status === "past_due");
+
+        let subscription_status: "Trialing" | "Active" | "Canceled" | "None" = "None";
+        if (hasTrialing) subscription_status = "Trialing";
+        else if (hasActive) subscription_status = "Active";
+        else if (hasCanceled) subscription_status = "Canceled";
+
+        const tier = c.subscription_tier === "free" || !c.subscription_tier ? null : c.subscription_tier;
+        const plan_tier = tier ? tier.charAt(0).toUpperCase() + tier.slice(1) : null;
+
+        return {
+          id: c.id,
+          name: c.name ?? c.email ?? "",
+          email: c.email,
+          avatar_url: null,
+          subscription_status,
+          plan_tier,
+          credits_remaining: c.credit_balance ?? 0,
+          downloads_30d: 0,
+          last_active: c.updated_at ?? c.created_at ?? now,
+          is_active: (c.status ?? "active") === "active",
+          created_at: c.created_at,
+        };
+      });
+
+      setUsers(mapped);
     } catch (err: any) {
       console.error("Error fetching users:", err);
-      setError(err.message);
+      setError(err.message ?? "Failed to load customers");
     } finally {
       setIsLoading(false);
     }

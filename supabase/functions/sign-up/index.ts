@@ -11,8 +11,6 @@ const corsHeaders = {
 
 const MIN_PASSWORD_LENGTH = 8;
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-/** Auth email prefix for customers so same email can have separate admin vs customer password */
-const CUSTOMER_EMAIL_PREFIX = "customer_";
 
 function jsonResponse(body: object, status: number) {
   return new Response(JSON.stringify(body), {
@@ -76,16 +74,14 @@ Deno.serve(async (req) => {
       return jsonResponse({ error: "A customer account with this email already exists" }, 409);
     }
 
-    // Use prefixed auth email so customer has a separate auth account (and password) from admin
-    const authEmail = CUSTOMER_EMAIL_PREFIX + trimmedEmail;
+    // Create auth user with customer email (no prefix)
     const { data: linkData, error: authError } = await supabase.auth.admin.generateLink({
       type: "signup",
-      email: authEmail,
+      email: trimmedEmail,
       password,
       options: {
         data: {
           is_customer: true,
-          real_email: trimmedEmail,
           ...(name ? { name: name.trim() } : {}),
         },
         redirectTo: "http://localhost:3001/login",
@@ -111,7 +107,7 @@ Deno.serve(async (req) => {
       return jsonResponse({ error: "Account could not be created" }, 500);
     }
 
-    // Send confirmation email via Resend (to real email) so user can confirm and sign in
+    // Send confirmation email via Resend so user can confirm and sign in
     const resendApiKey = Deno.env.get("RESEND_API_KEY");
     const fromAddress = Deno.env.get("RESEND_FROM_EMAIL") || "The Sample Lab <noreply@thesamplelab.app>";
     if (resendApiKey && confirmationLink) {

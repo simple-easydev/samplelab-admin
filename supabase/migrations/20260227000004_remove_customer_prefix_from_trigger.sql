@@ -1,8 +1,9 @@
 -- =====================================================
--- OAUTH CUSTOMER: handle_new_user (no auth email prefix)
+-- REMOVE CUSTOMER_ PREFIX: do not modify auth.users email for OAuth
 -- =====================================================
--- Creates customer row for is_customer or OAuth sign-ups. Does not modify
--- auth.users email (no customer_ prefix).
+-- Replaces handle_new_user to remove the logic that set auth.users.email
+-- to "customer_<email>" and real_email in metadata for OAuth sign-ups.
+-- Auth email stays as-is (e.g. Google email); customer row still created.
 -- =====================================================
 
 CREATE OR REPLACE FUNCTION public.handle_new_user()
