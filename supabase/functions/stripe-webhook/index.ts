@@ -86,8 +86,6 @@ Deno.serve(async (req) => {
     // Handle different event types
     switch (event.type) {
       case "checkout.session.completed": {
-        const session = event.data.object as Stripe.Checkout.Session;
-        await handleCheckoutSessionCompleted(supabase, stripe, session);
         break;
       }
 
