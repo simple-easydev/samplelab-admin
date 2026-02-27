@@ -55,6 +55,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { supabase } from "@/lib/supabase";
 
 interface PlanTier {
   id: string;
@@ -129,72 +130,46 @@ export default function PlanTiersPage() {
       setIsLoading(true);
       setError(null);
 
-      // TODO: Replace with actual database query when plan_tiers table exists
-      // For now, using mock data
-      const mockPlans: PlanTier[] = [
-        {
-          id: "1",
-          name: "free",
-          display_name: "Free",
-          description: "Perfect for trying out the platform",
-          price_monthly: 0,
-          price_yearly: 0,
-          credits_monthly: 25,
-          is_popular: false,
-          is_active: true,
-          features: ["25 credits/month", "Basic sample library", "Standard quality", "Community support"],
-          sort_order: 1,
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-        },
-        {
-          id: "2",
-          name: "starter",
-          display_name: "Starter",
-          description: "For hobbyists and beginners",
-          price_monthly: 9.99,
-          price_yearly: 99,
-          credits_monthly: 100,
-          is_popular: false,
-          is_active: true,
-          features: ["100 credits/month", "Full sample library", "HD quality", "Email support", "No watermarks"],
-          sort_order: 2,
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-        },
-        {
-          id: "3",
-          name: "pro",
-          display_name: "Pro",
-          description: "Most popular for serious producers",
-          price_monthly: 19.99,
-          price_yearly: 199,
-          credits_monthly: 250,
-          is_popular: true,
-          is_active: true,
-          features: ["250 credits/month", "Full sample library", "Premium samples", "Priority support", "Stems included", "Early access"],
-          sort_order: 3,
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-        },
-        {
-          id: "4",
-          name: "elite",
-          display_name: "Elite",
-          description: "For professionals and studios",
-          price_monthly: 39.99,
-          price_yearly: 399,
-          credits_monthly: 600,
-          is_popular: false,
-          is_active: true,
-          features: ["600 credits/month", "Unlimited library access", "All premium samples", "24/7 priority support", "All stems included", "Early access", "Custom licensing"],
-          sort_order: 4,
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-        },
-      ];
+      const { data, error: fetchError } = await supabase
+        .from("plan_tiers")
+        .select("*")
+        .order("sort_order", { ascending: true });
 
-      setPlans(mockPlans);
+      if (fetchError) throw fetchError;
+
+      type PlanTierRow = {
+        id: string;
+        name: string;
+        display_name: string;
+        description: string | null;
+        price_monthly: number;
+        price_yearly: number;
+        credits_monthly: number;
+        is_popular: boolean;
+        is_active: boolean;
+        features: string[];
+        sort_order: number;
+        created_at: string;
+        updated_at: string;
+      };
+
+      const mapped: PlanTier[] = ((data ?? []) as PlanTierRow[]).map((row) => ({
+        id: row.id,
+        name: row.name,
+        display_name: row.display_name,
+        description: row.description ?? null,
+        price_monthly: Number(row.price_monthly),
+        price_yearly: Number(row.price_yearly),
+        credits_monthly: row.credits_monthly ?? 0,
+        is_popular: row.is_popular ?? false,
+        is_active: row.is_active ?? true,
+        features: Array.isArray(row.features) ? row.features : [],
+        sort_order: row.sort_order ?? 0,
+        created_at: row.created_at,
+        updated_at: row.updated_at,
+      }));
+
+      setPlans(mapped);
     } catch (err: any) {
       console.error("Error fetching plans:", err);
       setError("Failed to load plan tiers: " + err.message);
