@@ -459,37 +459,86 @@ export default function PlanTiersPage() {
     return Math.round(discount);
   };
 
-  // Toggle popular status
+  // Toggle popular status (persists via update-plan-tier)
   const togglePopular = async (plan: PlanTier) => {
     try {
-      // TODO: Add database update logic
-      // const { error } = await supabase
-      //   .from("plan_tiers")
-      //   .update({ is_popular: !plan.is_popular })
-      //   .eq("id", plan.id);
+      const { data: sessionData } = await supabase.auth.getSession();
+      if (!sessionData?.session?.access_token) {
+        toast.error("You must be signed in to update a plan");
+        return;
+      }
 
-      // if (error) throw error;
+      const newPopular = !plan.is_popular;
+      const authHeader = {
+        Authorization: `Bearer ${sessionData.session.access_token}`,
+      };
 
-      // If setting this plan as popular, remove popular from all others
-      const updatedPlans = plans.map((p) => {
-        if (p.id === plan.id) {
-          return { ...p, is_popular: !p.is_popular, updated_at: new Date().toISOString() };
-        } else if (!plan.is_popular) {
-          // If we're setting a new popular plan, remove popular from others
-          return { ...p, is_popular: false, updated_at: new Date().toISOString() };
+      // If setting this plan as popular, clear is_popular on all others first
+      if (newPopular) {
+        const othersPopular = plans.filter((p) => p.id !== plan.id && p.is_popular);
+        for (const p of othersPopular) {
+          const { data, error } = await supabase.functions.invoke("update-plan-tier", {
+            body: { id: p.id, is_popular: false },
+            headers: authHeader,
+          });
+          if (error) throw error;
+          const payload = data as { error?: string; plan?: Record<string, unknown> } | null;
+          if (payload?.error) throw new Error(payload.error);
         }
-        return p;
+      }
+
+      const { data, error } = await supabase.functions.invoke("update-plan-tier", {
+        body: { id: plan.id, is_popular: newPopular },
+        headers: authHeader,
       });
 
-      setPlans(updatedPlans);
+      if (error) throw error;
+
+      const payload = data as { error?: string; plan?: Record<string, unknown> } | null;
+      if (payload?.error) throw new Error(payload.error);
+      if (!payload?.plan) throw new Error("No plan returned");
+
+      const row = payload.plan as {
+        id: string;
+        name: string;
+        display_name: string;
+        description: string | null;
+        price_monthly: number;
+        price_yearly: number;
+        credits_monthly: number;
+        is_popular: boolean;
+        is_active: boolean;
+        features: string[];
+        sort_order: number;
+        created_at: string;
+        updated_at: string;
+      };
+
+      const updatedPlan: PlanTier = {
+        id: row.id,
+        name: row.name,
+        display_name: row.display_name,
+        description: row.description ?? null,
+        price_monthly: Number(row.price_monthly),
+        price_yearly: Number(row.price_yearly),
+        credits_monthly: row.credits_monthly ?? 0,
+        is_popular: row.is_popular ?? false,
+        is_active: row.is_active ?? true,
+        features: Array.isArray(row.features) ? row.features : [],
+        sort_order: row.sort_order ?? 0,
+        created_at: row.created_at,
+        updated_at: row.updated_at,
+      };
+
+      setPlans((prev) =>
+        prev.map((p) => (p.id === plan.id ? updatedPlan : newPopular ? { ...p, is_popular: false } : p))
+      );
       toast.success(
-        plan.is_popular
-          ? "Removed from popular plans"
-          : "Marked as most popular"
+        newPopular ? "Marked as most popular" : "Removed from popular plans"
       );
     } catch (err: any) {
       console.error("Error updating plan:", err);
-      toast.error("Failed to update plan");
+      toast.error("Failed to update plan: " + (err?.message ?? ""));
     }
   };
 
