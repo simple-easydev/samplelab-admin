@@ -276,35 +276,74 @@ export default function PlanTiersPage() {
       setIsSaving(true);
 
       if (editingPlan) {
-        // Update existing plan - only editable fields
-        const planData = {
+        // Update existing plan via Edge Function
+        const { data: sessionData } = await supabase.auth.getSession();
+        if (!sessionData?.session?.access_token) {
+          toast.error("You must be signed in to update a plan");
+          return;
+        }
+
+        const updateBody = {
+          id: editingPlan.id,
+          display_name: formData.display_name,
+          description: formData.description || null,
+          price_monthly: parseFloat(formData.price_monthly) || 0,
+          price_yearly: parseFloat(formData.price_yearly) || 0,
           credits_monthly: parseInt(formData.credits_monthly) || 0,
           is_popular: formData.is_popular,
+          is_active: formData.is_active,
+          features: formData.features,
+          sort_order: parseInt(formData.sort_order) || 0,
         };
 
-        // TODO: Add database update logic
-        // const { error } = await supabase
-        //   .from("plan_tiers")
-        //   .update(planData)
-        //   .eq("id", editingPlan.id);
-
-        // if (error) throw error;
-
-        // Simulate API call
-        await new Promise((resolve) => setTimeout(resolve, 500));
-
-        // If setting this plan as popular, remove popular from all others
-        const updatedPlans = plans.map((p) => {
-          if (p.id === editingPlan.id) {
-            return { ...p, ...planData, updated_at: new Date().toISOString() };
-          } else if (formData.is_popular && p.is_popular) {
-            // If we're setting a new popular plan, remove popular from others
-            return { ...p, is_popular: false, updated_at: new Date().toISOString() };
-          }
-          return p;
+        const { data, error } = await supabase.functions.invoke("update-plan-tier", {
+          body: updateBody,
+          headers: {
+            Authorization: `Bearer ${sessionData.session.access_token}`,
+          },
         });
 
-        setPlans(updatedPlans);
+        if (error) throw error;
+
+        const payload = data as { error?: string; plan?: Record<string, unknown> } | null;
+        if (payload?.error) throw new Error(payload.error);
+        if (!payload?.plan) throw new Error("No plan returned");
+
+        const row = payload.plan as {
+          id: string;
+          name: string;
+          display_name: string;
+          description: string | null;
+          price_monthly: number;
+          price_yearly: number;
+          credits_monthly: number;
+          is_popular: boolean;
+          is_active: boolean;
+          features: string[];
+          sort_order: number;
+          created_at: string;
+          updated_at: string;
+        };
+
+        const updatedPlan: PlanTier = {
+          id: row.id,
+          name: row.name,
+          display_name: row.display_name,
+          description: row.description ?? null,
+          price_monthly: Number(row.price_monthly),
+          price_yearly: Number(row.price_yearly),
+          credits_monthly: row.credits_monthly ?? 0,
+          is_popular: row.is_popular ?? false,
+          is_active: row.is_active ?? true,
+          features: Array.isArray(row.features) ? row.features : [],
+          sort_order: row.sort_order ?? 0,
+          created_at: row.created_at,
+          updated_at: row.updated_at,
+        };
+
+        setPlans((prev) =>
+          prev.map((p) => (p.id === editingPlan.id ? updatedPlan : p))
+        );
         toast.success("Plan updated successfully");
         setShowEditModal(false);
       } else {
