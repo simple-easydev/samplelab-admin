@@ -424,12 +424,8 @@ function mapStripePriceToTier(priceId: string | undefined): string {
 
   // Map your Stripe price IDs to tiers
   const priceMap: Record<string, string> = {
-    "price_starter_monthly": "starter",
-    "price_starter_annual": "starter",
-    "price_pro_monthly": "pro",
-    "price_pro_annual": "pro",
-    "price_enterprise_monthly": "enterprise",
-    "price_enterprise_annual": "enterprise",
+    "price_1T59eaCcJgbE1OPPymHFcWrA": "pro",
+    "price_1T5AM8CcJgbE1OPP67lxLhRZ": "pro"
   };
 
   return priceMap[priceId] || "free";
