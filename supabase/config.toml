@@ -137,6 +137,8 @@ verify_jwt = false
 verify_jwt = false
 [functions.delete-plan-tier]
 verify_jwt = false
+[functions.get-stripe-products]
+verify_jwt = false
 
 [analytics]
 enabled = false
