@@ -229,24 +229,31 @@ export default function PlanTiersPage() {
     try {
       setIsDeleting(true);
 
-      // TODO: Add database delete logic
-      // const { error } = await supabase
-      //   .from("plan_tiers")
-      //   .delete()
-      //   .eq("id", selectedPlan.id);
+      const { data: sessionData } = await supabase.auth.getSession();
+      if (!sessionData?.session?.access_token) {
+        toast.error("You must be signed in to delete a plan");
+        return;
+      }
 
-      // if (error) throw error;
+      const { data, error } = await supabase.functions.invoke("delete-plan-tier", {
+        body: { id: selectedPlan.id },
+        headers: {
+          Authorization: `Bearer ${sessionData.session.access_token}`,
+        },
+      });
 
-      // Simulate API call
-      await new Promise((resolve) => setTimeout(resolve, 500));
+      if (error) throw error;
 
-      setPlans(plans.filter((p) => p.id !== selectedPlan.id));
+      const payload = data as { error?: string } | null;
+      if (payload?.error) throw new Error(payload.error);
+
+      setPlans((prev) => prev.filter((p) => p.id !== selectedPlan.id));
       toast.success("Plan deleted successfully");
       setShowDeleteDialog(false);
       setSelectedPlan(null);
     } catch (err: any) {
       console.error("Error deleting plan:", err);
-      toast.error("Failed to delete plan: " + err.message);
+      toast.error("Failed to delete plan: " + (err?.message ?? ""));
     } finally {
       setIsDeleting(false);
     }
