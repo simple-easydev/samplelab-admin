@@ -38,7 +38,6 @@ Deno.serve(async (req) => {
     const stripe = new Stripe(stripeSecretKey, {
       apiVersion: "2026-01-28.clover",
     });
-    const cryptoProvider = Stripe.createSubtleCryptoProvider();
 
     // Get the signature from headers
     const signature = req.headers.get("stripe-signature");
@@ -56,9 +55,7 @@ Deno.serve(async (req) => {
       event = await stripe.webhooks.constructEventAsync(
         body,
         signature,
-        webhookSecret,
-        undefined,
-        cryptoProvider
+        webhookSecret
       );
     } catch (err) {
       console.error("Webhook signature verification failed:", err);
