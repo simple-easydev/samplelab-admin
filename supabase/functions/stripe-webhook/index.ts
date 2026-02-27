@@ -1,7 +1,7 @@
 // Supabase Edge Function: Stripe Webhook Handler
 // Handles Stripe webhook events and updates subscriptions table
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import Stripe from "https://esm.sh/stripe@14.21.0?target=deno";
+import Stripe from "https://esm.sh/stripe@14.21.0?target=denonext";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -38,6 +38,7 @@ Deno.serve(async (req) => {
     const stripe = new Stripe(stripeSecretKey, {
       apiVersion: "2026-01-28.clover",
     });
+    const cryptoProvider = Stripe.createSubtleCryptoProvider();
 
     // Get the signature from headers
     const signature = req.headers.get("stripe-signature");
@@ -55,7 +56,9 @@ Deno.serve(async (req) => {
       event = await stripe.webhooks.constructEventAsync(
         body,
         signature,
-        webhookSecret
+        webhookSecret,
+        undefined,
+        cryptoProvider
       );
     } catch (err) {
       console.error("Webhook signature verification failed:", err);
