@@ -224,8 +224,8 @@ async function handleSubscriptionCreatedOrUpdated(
       }
     }
 
-    // Update auth user metadata to mark onboarding as completed for all active subscriptions
-    if (customer.user_id && isActive) {
+    // Update auth user metadata to mark onboarding as completed for all active subscriptions and trial supscription
+    if (customer.user_id) {
       console.log("Updating user metadata for onboarding completion:", customer.user_id);
       const { error: metadataError } = await supabase.auth.admin.updateUserById(
         customer.user_id,
