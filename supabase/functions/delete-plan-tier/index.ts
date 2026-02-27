@@ -94,7 +94,7 @@ Deno.serve(async (req) => {
     // Fetch plan to get Stripe price IDs before delete (for archiving product)
     const { data: plan, error: fetchError } = await supabase
       .from("plan_tiers")
-      .select("id, stripe_price_id_monthly, stripe_price_id_yearly")
+      .select("id, stripe_price_id")
       .eq("id", id)
       .single();
 
@@ -102,9 +102,7 @@ Deno.serve(async (req) => {
       return jsonResponse({ error: "Plan not found" }, 404);
     }
 
-    const priceId =
-      (plan.stripe_price_id_monthly as string)?.trim() ||
-      (plan.stripe_price_id_yearly as string)?.trim();
+    const priceId = (plan.stripe_price_id as string)?.trim();
 
     if (priceId) {
       const stripeSecretKey = Deno.env.get("STRIPE_SECRET_KEY");

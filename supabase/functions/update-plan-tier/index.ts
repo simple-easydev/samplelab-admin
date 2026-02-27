@@ -22,15 +22,15 @@ type UpdateBody = {
   name?: string;
   display_name?: string;
   description?: string | null;
-  price_monthly?: number;
-  price_yearly?: number;
+  billing_cycle?: string;
+  price?: number;
+  original_price?: number | null;
   credits_monthly?: number;
   is_popular?: boolean;
   is_active?: boolean;
   features?: string[];
   sort_order?: number;
-  stripe_price_id_monthly?: string | null;
-  stripe_price_id_yearly?: string | null;
+  stripe_price_id?: string | null;
 };
 
 Deno.serve(async (req) => {
@@ -112,11 +112,15 @@ Deno.serve(async (req) => {
     if (body.description !== undefined) {
       updates.description = body.description?.trim() || null;
     }
-    if (body.price_monthly !== undefined) {
-      updates.price_monthly = Number(body.price_monthly) || 0;
+    if (body.billing_cycle !== undefined) {
+      const bc = body.billing_cycle?.toLowerCase();
+      updates.billing_cycle = bc === "year" ? "year" : "month";
     }
-    if (body.price_yearly !== undefined) {
-      updates.price_yearly = Number(body.price_yearly) || 0;
+    if (body.price !== undefined) {
+      updates.price = Number(body.price) || 0;
+    }
+    if (body.original_price !== undefined) {
+      updates.original_price = body.original_price != null ? Number(body.original_price) : null;
     }
     if (body.credits_monthly !== undefined) {
       updates.credits_monthly = Math.floor(Number(body.credits_monthly) || 0);
@@ -135,11 +139,8 @@ Deno.serve(async (req) => {
     if (body.sort_order !== undefined) {
       updates.sort_order = Math.floor(Number(body.sort_order) || 0);
     }
-    if (body.stripe_price_id_monthly !== undefined) {
-      updates.stripe_price_id_monthly = body.stripe_price_id_monthly?.trim() || null;
-    }
-    if (body.stripe_price_id_yearly !== undefined) {
-      updates.stripe_price_id_yearly = body.stripe_price_id_yearly?.trim() || null;
+    if (body.stripe_price_id !== undefined) {
+      updates.stripe_price_id = body.stripe_price_id?.trim() || null;
     }
 
     if (Object.keys(updates).length === 0) {

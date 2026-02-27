@@ -205,15 +205,15 @@ export interface Database {
           name: string
           display_name: string
           description: string | null
-          price_monthly: number
-          price_yearly: number
+          billing_cycle: string
+          price: number
+          original_price: number | null
           credits_monthly: number
           is_popular: boolean
           is_active: boolean
           features: string[]
           sort_order: number
-          stripe_price_id_monthly: string | null
-          stripe_price_id_yearly: string | null
+          stripe_price_id: string | null
           created_at: string
           updated_at: string
         }
@@ -222,15 +222,15 @@ export interface Database {
           name: string
           display_name: string
           description?: string | null
-          price_monthly?: number
-          price_yearly?: number
+          billing_cycle?: string
+          price?: number
+          original_price?: number | null
           credits_monthly?: number
           is_popular?: boolean
           is_active?: boolean
           features?: string[]
           sort_order?: number
-          stripe_price_id_monthly?: string | null
-          stripe_price_id_yearly?: string | null
+          stripe_price_id?: string | null
           created_at?: string
           updated_at?: string
         }
@@ -238,15 +238,15 @@ export interface Database {
           id?: string
           name?: string
           display_name?: string | null
-          price_monthly?: number
-          price_yearly?: number
+          billing_cycle?: string
+          price?: number
+          original_price?: number | null
           credits_monthly?: number
           is_popular?: boolean
           is_active?: boolean
           features?: string[]
           sort_order?: number
-          stripe_price_id_monthly?: string | null
-          stripe_price_id_yearly?: string | null
+          stripe_price_id?: string | null
           created_at?: string
           updated_at?: string
         }

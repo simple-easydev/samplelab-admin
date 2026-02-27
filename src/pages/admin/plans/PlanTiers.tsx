@@ -17,7 +17,6 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
@@ -62,8 +61,9 @@ interface PlanTier {
   name: string;
   display_name: string;
   description: string | null;
-  price_monthly: number;
-  price_yearly: number;
+  billing_cycle: string;
+  price: number;
+  original_price: number | null;
   credits_monthly: number;
   is_popular: boolean;
   is_active: boolean;
@@ -77,8 +77,9 @@ interface PlanFormData {
   name: string;
   display_name: string;
   description: string;
-  price_monthly: string;
-  price_yearly: string;
+  billing_cycle: string;
+  price: string;
+  original_price: string;
   credits_monthly: string;
   is_popular: boolean;
   is_active: boolean;
@@ -90,8 +91,9 @@ const EMPTY_FORM: PlanFormData = {
   name: "",
   display_name: "",
   description: "",
-  price_monthly: "0",
-  price_yearly: "0",
+  billing_cycle: "month",
+  price: "0",
+  original_price: "",
   credits_monthly: "0",
   is_popular: false,
   is_active: true,
@@ -142,8 +144,9 @@ export default function PlanTiersPage() {
         name: string;
         display_name: string;
         description: string | null;
-        price_monthly: number;
-        price_yearly: number;
+        billing_cycle: string;
+        price: number;
+        original_price: number | null;
         credits_monthly: number;
         is_popular: boolean;
         is_active: boolean;
@@ -158,8 +161,9 @@ export default function PlanTiersPage() {
         name: row.name,
         display_name: row.display_name,
         description: row.description ?? null,
-        price_monthly: Number(row.price_monthly),
-        price_yearly: Number(row.price_yearly),
+        billing_cycle: row.billing_cycle ?? "month",
+        price: Number(row.price),
+        original_price: row.original_price != null ? Number(row.original_price) : null,
         credits_monthly: row.credits_monthly ?? 0,
         is_popular: row.is_popular ?? false,
         is_active: row.is_active ?? true,
@@ -206,8 +210,9 @@ export default function PlanTiersPage() {
       name: plan.name,
       display_name: plan.display_name,
       description: plan.description || "",
-      price_monthly: plan.price_monthly.toString(),
-      price_yearly: plan.price_yearly.toString(),
+      billing_cycle: plan.billing_cycle || "month",
+      price: plan.price.toString(),
+      original_price: plan.original_price != null ? plan.original_price.toString() : "",
       credits_monthly: plan.credits_monthly.toString(),
       is_popular: plan.is_popular,
       is_active: plan.is_active,
@@ -294,8 +299,9 @@ export default function PlanTiersPage() {
           id: editingPlan.id,
           display_name: formData.display_name,
           description: formData.description || null,
-          price_monthly: parseFloat(formData.price_monthly) || 0,
-          price_yearly: parseFloat(formData.price_yearly) || 0,
+          billing_cycle: formData.billing_cycle || "month",
+          price: parseFloat(formData.price) || 0,
+          original_price: formData.original_price.trim() !== "" ? parseFloat(formData.original_price) : null,
           credits_monthly: parseInt(formData.credits_monthly) || 0,
           is_popular: formData.is_popular,
           is_active: formData.is_active,
@@ -321,8 +327,9 @@ export default function PlanTiersPage() {
           name: string;
           display_name: string;
           description: string | null;
-          price_monthly: number;
-          price_yearly: number;
+          billing_cycle: string;
+          price: number;
+          original_price: number | null;
           credits_monthly: number;
           is_popular: boolean;
           is_active: boolean;
@@ -337,8 +344,9 @@ export default function PlanTiersPage() {
           name: row.name,
           display_name: row.display_name,
           description: row.description ?? null,
-          price_monthly: Number(row.price_monthly),
-          price_yearly: Number(row.price_yearly),
+          billing_cycle: row.billing_cycle ?? "month",
+          price: Number(row.price),
+          original_price: row.original_price != null ? Number(row.original_price) : null,
           credits_monthly: row.credits_monthly ?? 0,
           is_popular: row.is_popular ?? false,
           is_active: row.is_active ?? true,
@@ -359,8 +367,9 @@ export default function PlanTiersPage() {
           name: formData.name.toLowerCase().replace(/\s+/g, "_"),
           display_name: formData.display_name,
           description: formData.description || null,
-          price_monthly: parseFloat(formData.price_monthly) || 0,
-          price_yearly: parseFloat(formData.price_yearly) || 0,
+          billing_cycle: formData.billing_cycle || "month",
+          price: parseFloat(formData.price) || 0,
+          original_price: formData.original_price.trim() !== "" ? parseFloat(formData.original_price) : null,
           credits_monthly: parseInt(formData.credits_monthly) || 0,
           is_popular: formData.is_popular,
           is_active: formData.is_active,
@@ -393,8 +402,9 @@ export default function PlanTiersPage() {
           name: string;
           display_name: string;
           description: string | null;
-          price_monthly: number;
-          price_yearly: number;
+          billing_cycle: string;
+          price: number;
+          original_price: number | null;
           credits_monthly: number;
           is_popular: boolean;
           is_active: boolean;
@@ -409,8 +419,9 @@ export default function PlanTiersPage() {
           name: row.name,
           display_name: row.display_name,
           description: row.description ?? null,
-          price_monthly: Number(row.price_monthly),
-          price_yearly: Number(row.price_yearly),
+          billing_cycle: row.billing_cycle ?? "month",
+          price: Number(row.price),
+          original_price: row.original_price != null ? Number(row.original_price) : null,
           credits_monthly: row.credits_monthly ?? 0,
           is_popular: row.is_popular ?? false,
           is_active: row.is_active ?? true,
@@ -458,13 +469,8 @@ export default function PlanTiersPage() {
     return price === 0 ? "Free" : `$${price.toFixed(2)}`;
   };
 
-  // Calculate yearly discount percentage
-  const calculateYearlyDiscount = (monthlyPrice: number, yearlyPrice: number) => {
-    if (monthlyPrice === 0 || yearlyPrice === 0) return 0;
-    const monthlyTotal = monthlyPrice * 12;
-    const discount = ((monthlyTotal - yearlyPrice) / monthlyTotal) * 100;
-    return Math.round(discount);
-  };
+  const billingCycleLabel = (cycle: string) =>
+    cycle === "year" ? "Per year" : "Per month";
 
   // Toggle popular status (persists via update-plan-tier)
   const togglePopular = async (plan: PlanTier) => {
@@ -510,8 +516,9 @@ export default function PlanTiersPage() {
         name: string;
         display_name: string;
         description: string | null;
-        price_monthly: number;
-        price_yearly: number;
+        billing_cycle: string;
+        price: number;
+        original_price: number | null;
         credits_monthly: number;
         is_popular: boolean;
         is_active: boolean;
@@ -526,8 +533,9 @@ export default function PlanTiersPage() {
         name: row.name,
         display_name: row.display_name,
         description: row.description ?? null,
-        price_monthly: Number(row.price_monthly),
-        price_yearly: Number(row.price_yearly),
+        billing_cycle: row.billing_cycle ?? "month",
+        price: Number(row.price),
+        original_price: row.original_price != null ? Number(row.original_price) : null,
         credits_monthly: row.credits_monthly ?? 0,
         is_popular: row.is_popular ?? false,
         is_active: row.is_active ?? true,
@@ -618,9 +626,8 @@ export default function PlanTiersPage() {
               <TableHeader>
                 <TableRow>
                   <TableHead>Plan Name</TableHead>
-                  <TableHead>Monthly Price</TableHead>
-                  <TableHead>Yearly Price</TableHead>
-                  <TableHead>Yearly Discount</TableHead>
+                  <TableHead>Price</TableHead>
+                  <TableHead>Billing</TableHead>
                   <TableHead>Monthly Credits</TableHead>
                   <TableHead>Most Popular</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
@@ -634,22 +641,18 @@ export default function PlanTiersPage() {
                     </TableCell>
                     <TableCell>
                       <div className="font-medium">
-                        {formatPrice(plan.price_monthly)}
+                        {plan.original_price != null && plan.original_price > plan.price && (
+                          <span className="text-muted-foreground line-through mr-2">
+                            {formatPrice(plan.original_price)}
+                          </span>
+                        )}
+                        {formatPrice(plan.price)}
                       </div>
                     </TableCell>
                     <TableCell>
-                      <div className="font-medium">
-                        {formatPrice(plan.price_yearly)}
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      {plan.price_monthly > 0 && plan.price_yearly > 0 ? (
-                        <Badge variant="secondary">
-                          {calculateYearlyDiscount(plan.price_monthly, plan.price_yearly)}% off
-                        </Badge>
-                      ) : (
-                        <span className="text-muted-foreground">—</span>
-                      )}
+                      <span className="text-muted-foreground">
+                        {billingCycleLabel(plan.billing_cycle)}
+                      </span>
                     </TableCell>
                     <TableCell>
                       <div className="flex items-center gap-1.5">
@@ -764,33 +767,49 @@ export default function PlanTiersPage() {
 
             <div className="grid grid-cols-3 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="price_monthly">Monthly Price ($)</Label>
+                <Label htmlFor="billing_cycle">Billing cycle</Label>
+                <select
+                  id="billing_cycle"
+                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                  value={formData.billing_cycle}
+                  onChange={(e) =>
+                    setFormData({ ...formData, billing_cycle: e.target.value })
+                  }
+                >
+                  <option value="month">Per month</option>
+                  <option value="year">Per year</option>
+                </select>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="price">Price ($)</Label>
                 <Input
-                  id="price_monthly"
+                  id="price"
                   type="number"
                   step="0.01"
                   min="0"
                   placeholder="9.99"
-                  value={formData.price_monthly}
+                  value={formData.price}
                   onChange={(e) =>
-                    setFormData({ ...formData, price_monthly: e.target.value })
+                    setFormData({ ...formData, price: e.target.value })
                   }
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="price_yearly">Yearly Price ($)</Label>
+                <Label htmlFor="original_price">Original price ($) — strikethrough</Label>
                 <Input
-                  id="price_yearly"
+                  id="original_price"
                   type="number"
                   step="0.01"
                   min="0"
-                  placeholder="99.00"
-                  value={formData.price_yearly}
+                  placeholder="Optional"
+                  value={formData.original_price}
                   onChange={(e) =>
-                    setFormData({ ...formData, price_yearly: e.target.value })
+                    setFormData({ ...formData, original_price: e.target.value })
                   }
                 />
               </div>
+            </div>
+            <div className="grid grid-cols-1 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="credits_monthly">Monthly Credits</Label>
                 <Input
@@ -940,17 +959,24 @@ export default function PlanTiersPage() {
 
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label>Monthly Price</Label>
+                  <Label>Price</Label>
                   <Input
-                    value={formatPrice(parseFloat(formData.price_monthly)) + " / month"}
+                    value={
+                      (formData.original_price.trim() !== ""
+                        ? formatPrice(parseFloat(formData.original_price)) + " → "
+                        : "") +
+                      formatPrice(parseFloat(formData.price)) +
+                      " / " +
+                      (formData.billing_cycle === "year" ? "year" : "month")
+                    }
                     disabled
                     className="bg-muted"
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label>Yearly Price</Label>
+                  <Label>Billing</Label>
                   <Input
-                    value={formatPrice(parseFloat(formData.price_yearly)) + " / year"}
+                    value={formData.billing_cycle === "year" ? "Per year" : "Per month"}
                     disabled
                     className="bg-muted"
                   />

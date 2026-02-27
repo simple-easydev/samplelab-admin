@@ -20,15 +20,15 @@ type PlanBody = {
   name?: string;
   display_name?: string;
   description?: string | null;
-  price_monthly?: number;
-  price_yearly?: number;
+  billing_cycle?: string;
+  price?: number;
+  original_price?: number | null;
   credits_monthly?: number;
   is_popular?: boolean;
   is_active?: boolean;
   features?: string[];
   sort_order?: number;
-  stripe_price_id_monthly?: string | null;
-  stripe_price_id_yearly?: string | null;
+  stripe_price_id?: string | null;
 };
 
 Deno.serve(async (req) => {
@@ -102,19 +102,19 @@ Deno.serve(async (req) => {
     }
 
     const name = rawName.toLowerCase().replace(/\s+/g, "_");
-    const priceMonthly = Number(body.price_monthly) || 0;
-    const priceYearly = Number(body.price_yearly) || 0;
+    const billingCycle = (body.billing_cycle?.toLowerCase() === "year" ? "year" : "month") as "month" | "year";
+    const price = Number(body.price) || 0;
+    const originalPrice = body.original_price != null ? Number(body.original_price) : null;
     const creditsMonthly = Math.floor(Number(body.credits_monthly) || 0);
     const sortOrder = Math.floor(Number(body.sort_order) || 0);
     const features = Array.isArray(body.features)
       ? body.features.filter((f): f is string => typeof f === "string")
       : [];
 
-    let stripePriceIdMonthly: string | null = body.stripe_price_id_monthly?.trim() || null;
-    let stripePriceIdYearly: string | null = body.stripe_price_id_yearly?.trim() || null;
+    let stripePriceId: string | null = body.stripe_price_id?.trim() || null;
 
-    // Create Stripe product and prices when plan has at least one paid price
-    const shouldCreateStripe = priceMonthly > 0 || priceYearly > 0;
+    // Create Stripe product and one price when plan has a paid price
+    const shouldCreateStripe = price > 0;
     if (shouldCreateStripe) {
       const stripeSecretKey = Deno.env.get("STRIPE_SECRET_KEY");
       if (!stripeSecretKey) {
@@ -136,44 +136,31 @@ Deno.serve(async (req) => {
         metadata: { plan_name: name },
       });
 
-      if (priceMonthly > 0) {
-        const priceMonthlyCents = Math.round(priceMonthly * 100);
-        const monthlyPrice = await stripe.prices.create({
-          product: product.id,
-          currency: "usd",
-          unit_amount: priceMonthlyCents,
-          recurring: { interval: "month" },
-          metadata: { plan_name: name, interval: "month" },
-        });
-        stripePriceIdMonthly = monthlyPrice.id;
-      }
-
-      if (priceYearly > 0) {
-        const priceYearlyCents = Math.round(priceYearly * 100);
-        const yearlyPrice = await stripe.prices.create({
-          product: product.id,
-          currency: "usd",
-          unit_amount: priceYearlyCents,
-          recurring: { interval: "year" },
-          metadata: { plan_name: name, interval: "year" },
-        });
-        stripePriceIdYearly = yearlyPrice.id;
-      }
+      const amountCents = Math.round(price * 100);
+      const interval = billingCycle === "year" ? "year" : "month";
+      const stripePrice = await stripe.prices.create({
+        product: product.id,
+        currency: "usd",
+        unit_amount: amountCents,
+        recurring: { interval },
+        metadata: { plan_name: name, interval },
+      });
+      stripePriceId = stripePrice.id;
     }
 
     const insertRow = {
       name,
       display_name: displayName,
       description: body.description?.trim() || null,
-      price_monthly: priceMonthly,
-      price_yearly: priceYearly,
+      billing_cycle: billingCycle,
+      price,
+      original_price: originalPrice,
       credits_monthly: creditsMonthly,
       is_popular: Boolean(body.is_popular),
       is_active: body.is_active !== false,
       features,
       sort_order: sortOrder,
-      stripe_price_id_monthly: stripePriceIdMonthly,
-      stripe_price_id_yearly: stripePriceIdYearly,
+      stripe_price_id: stripePriceId,
     };
 
     const { data: plan, error: insertError } = await supabase
