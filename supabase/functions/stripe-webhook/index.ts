@@ -328,6 +328,24 @@ async function handleInvoicePaymentFailed(
   if (error) {
     console.error("Error updating subscription after failed payment:", error);
   }
+
+  // Downgrade customer to free tier when payment fails
+  const stripeCustomerId = invoice.customer as string;
+  if (stripeCustomerId) {
+    const { error: customerError } = await supabase
+      .from("customers")
+      .update({
+        subscription_tier: "free",
+        updated_at: new Date().toISOString(),
+      })
+      .eq("stripe_customer_id", stripeCustomerId);
+
+    if (customerError) {
+      console.error("Error updating customer tier to free after failed payment:", customerError);
+    } else {
+      console.log("Customer subscription_tier set to free after payment failure");
+    }
+  }
 }
 
 // Helper function to upsert subscription
