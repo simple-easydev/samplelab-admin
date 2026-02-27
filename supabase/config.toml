@@ -131,6 +131,8 @@ enable_confirmations = false
 verify_jwt = false
 [functions.sign-up]
 verify_jwt = false
+[functions.create-plan-tier]
+verify_jwt = false
 
 [analytics]
 enabled = false

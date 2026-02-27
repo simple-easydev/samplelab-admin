@@ -308,7 +308,7 @@ export default function PlanTiersPage() {
         toast.success("Plan updated successfully");
         setShowEditModal(false);
       } else {
-        // Create new plan - full data
+        // Create new plan via Edge Function
         const planData = {
           name: formData.name.toLowerCase().replace(/\s+/g, "_"),
           display_name: formData.display_name,
@@ -321,24 +321,57 @@ export default function PlanTiersPage() {
           features: formData.features,
           sort_order: parseInt(formData.sort_order) || 0,
         };
-        // Create new plan
-        // TODO: Add database insert logic
-        // const { data, error } = await supabase
-        //   .from("plan_tiers")
-        //   .insert(planData)
-        //   .select()
-        //   .single();
 
-        // if (error) throw error;
+        // Use current session (client auto-attaches Authorization when present)
+        const { data: sessionData } = await supabase.auth.getSession();
+        if (!sessionData?.session?.access_token) {
+          toast.error("You must be signed in to create a plan");
+          return;
+        }
 
-        // Simulate API call
-        await new Promise((resolve) => setTimeout(resolve, 500));
+        const { data, error } = await supabase.functions.invoke("create-plan-tier", {
+          body: planData,
+          headers: {
+            Authorization: `Bearer ${sessionData.session.access_token}`,
+          },
+        });
+
+        if (error) throw error;
+
+        const payload = data as { error?: string; plan?: Record<string, unknown> } | null;
+        if (payload?.error) throw new Error(payload.error);
+        if (!payload?.plan) throw new Error("No plan returned");
+
+        const row = payload.plan as {
+          id: string;
+          name: string;
+          display_name: string;
+          description: string | null;
+          price_monthly: number;
+          price_yearly: number;
+          credits_monthly: number;
+          is_popular: boolean;
+          is_active: boolean;
+          features: string[];
+          sort_order: number;
+          created_at: string;
+          updated_at: string;
+        };
 
         const newPlan: PlanTier = {
-          id: Date.now().toString(),
-          ...planData,
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
+          id: row.id,
+          name: row.name,
+          display_name: row.display_name,
+          description: row.description ?? null,
+          price_monthly: Number(row.price_monthly),
+          price_yearly: Number(row.price_yearly),
+          credits_monthly: row.credits_monthly ?? 0,
+          is_popular: row.is_popular ?? false,
+          is_active: row.is_active ?? true,
+          features: Array.isArray(row.features) ? row.features : [],
+          sort_order: row.sort_order ?? 0,
+          created_at: row.created_at,
+          updated_at: row.updated_at,
         };
 
         setPlans([...plans, newPlan]);
