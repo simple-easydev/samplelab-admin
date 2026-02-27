@@ -356,15 +356,22 @@ async function upsertSubscription(
 ) {
   const priceId = subscription.items.data[0]?.price.id;
   const tier = mapStripePriceToTier(priceId);
+  const firstItem = subscription.items.data[0];
 
-  // Validate timestamps before converting
-  const currentPeriodStart = subscription.current_period_start
-    ? new Date(subscription.current_period_start * 1000).toISOString()
+  // Period dates: use subscription item path (Stripe API); fallback to subscription root if present
+  const periodStart =
+    (firstItem as { current_period_start?: number })?.current_period_start ??
+    (subscription as { current_period_start?: number }).current_period_start;
+  const periodEnd =
+    (firstItem as { current_period_end?: number })?.current_period_end ??
+    (subscription as { current_period_end?: number }).current_period_end;
+
+  const currentPeriodStart = periodStart
+    ? new Date(periodStart * 1000).toISOString()
     : new Date().toISOString();
-  
-  const currentPeriodEnd = subscription.current_period_end
-    ? new Date(subscription.current_period_end * 1000).toISOString()
-    : new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(); // Default to 30 days from now
+  const currentPeriodEnd = periodEnd
+    ? new Date(periodEnd * 1000).toISOString()
+    : new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
 
   const subscriptionData = {
     customer_id: customerId,
