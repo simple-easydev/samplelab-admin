@@ -1,6 +1,7 @@
 // Supabase Edge Function: Create Plan Tier
-// Inserts a new plan into public.plan_tiers (admin only).
+// Inserts a new plan into public.plan_tiers and creates a Stripe product + prices (admin only).
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import Stripe from "https://esm.sh/stripe@14.21.0?target=denonext";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -109,6 +110,57 @@ Deno.serve(async (req) => {
       ? body.features.filter((f): f is string => typeof f === "string")
       : [];
 
+    let stripePriceIdMonthly: string | null = body.stripe_price_id_monthly?.trim() || null;
+    let stripePriceIdYearly: string | null = body.stripe_price_id_yearly?.trim() || null;
+
+    // Create Stripe product and prices when plan has at least one paid price
+    const shouldCreateStripe = priceMonthly > 0 || priceYearly > 0;
+    if (shouldCreateStripe) {
+      const stripeSecretKey = Deno.env.get("STRIPE_SECRET_KEY");
+      if (!stripeSecretKey) {
+        console.error("Missing STRIPE_SECRET_KEY");
+        return jsonResponse(
+          { error: "Stripe is not configured; cannot create paid plan" },
+          500
+        );
+      }
+
+      const stripe = new Stripe(stripeSecretKey, {
+        apiVersion: "2026-01-28.clover",
+      });
+
+      const productDescription = (body.description?.trim() || undefined) as string | undefined;
+      const product = await stripe.products.create({
+        name: displayName,
+        description: productDescription || undefined,
+        metadata: { plan_name: name },
+      });
+
+      if (priceMonthly > 0) {
+        const priceMonthlyCents = Math.round(priceMonthly * 100);
+        const monthlyPrice = await stripe.prices.create({
+          product: product.id,
+          currency: "usd",
+          unit_amount: priceMonthlyCents,
+          recurring: { interval: "month" },
+          metadata: { plan_name: name, interval: "month" },
+        });
+        stripePriceIdMonthly = monthlyPrice.id;
+      }
+
+      if (priceYearly > 0) {
+        const priceYearlyCents = Math.round(priceYearly * 100);
+        const yearlyPrice = await stripe.prices.create({
+          product: product.id,
+          currency: "usd",
+          unit_amount: priceYearlyCents,
+          recurring: { interval: "year" },
+          metadata: { plan_name: name, interval: "year" },
+        });
+        stripePriceIdYearly = yearlyPrice.id;
+      }
+    }
+
     const insertRow = {
       name,
       display_name: displayName,
@@ -120,8 +172,8 @@ Deno.serve(async (req) => {
       is_active: body.is_active !== false,
       features,
       sort_order: sortOrder,
-      stripe_price_id_monthly: body.stripe_price_id_monthly?.trim() || null,
-      stripe_price_id_yearly: body.stripe_price_id_yearly?.trim() || null,
+      stripe_price_id_monthly: stripePriceIdMonthly,
+      stripe_price_id_yearly: stripePriceIdYearly,
     };
 
     const { data: plan, error: insertError } = await supabase
