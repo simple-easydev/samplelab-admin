@@ -45,6 +45,13 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
   AlertDialog,
   AlertDialogAction,
   AlertDialogCancel,
@@ -199,6 +206,7 @@ export default function PlanTiersPage() {
 
   // Handle Add Plan
   const handleAddPlan = () => {
+    setEditingPlan(null);
     setFormData(EMPTY_FORM);
     setShowAddModal(true);
   };
@@ -206,6 +214,7 @@ export default function PlanTiersPage() {
   // Handle Edit Plan
   const handleEditPlan = (plan: PlanTier) => {
     setEditingPlan(plan);
+    setFeatureInput("");
     setFormData({
       name: plan.name,
       display_name: plan.display_name,
@@ -266,8 +275,17 @@ export default function PlanTiersPage() {
 
   // Handle Save Plan (Add or Edit)
   const handleSavePlan = async () => {
-    // Validation for edit modal - only credits are required
+    // Validation for edit modal
     if (editingPlan) {
+      if (!formData.display_name.trim()) {
+        toast.error("Display name is required");
+        return;
+      }
+      const priceNum = parseFloat(formData.price);
+      if (isNaN(priceNum) || priceNum < 0) {
+        toast.error("Price must be 0 or greater");
+        return;
+      }
       if (!formData.credits_monthly.trim() || parseInt(formData.credits_monthly) < 0) {
         toast.error("Valid monthly credits value is required");
         return;
@@ -768,34 +786,45 @@ export default function PlanTiersPage() {
             <div className="grid grid-cols-3 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="billing_cycle">Billing cycle</Label>
-                <select
-                  id="billing_cycle"
-                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                <Select
                   value={formData.billing_cycle}
-                  onChange={(e) =>
-                    setFormData({ ...formData, billing_cycle: e.target.value })
+                  onValueChange={(value) =>
+                    setFormData({ ...formData, billing_cycle: value })
                   }
                 >
-                  <option value="month">Per month</option>
-                  <option value="year">Per year</option>
-                </select>
+                  <SelectTrigger id="billing_cycle">
+                    <SelectValue placeholder="Select billing cycle" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="month">Per month</SelectItem>
+                    <SelectItem value="year">Per year</SelectItem>
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-muted-foreground">
+                  Interval for this plan&apos;s price
+                </p>
               </div>
               <div className="space-y-2">
-                <Label htmlFor="price">Price ($)</Label>
+                <Label htmlFor="price">
+                  Price ($) <span className="text-destructive">*</span>
+                </Label>
                 <Input
                   id="price"
                   type="number"
                   step="0.01"
                   min="0"
-                  placeholder="9.99"
+                  placeholder="0 or e.g. 9.99"
                   value={formData.price}
                   onChange={(e) =>
                     setFormData({ ...formData, price: e.target.value })
                   }
                 />
+                <p className="text-xs text-muted-foreground">
+                  Main price (0 = free). Creates Stripe price when &gt; 0.
+                </p>
               </div>
               <div className="space-y-2">
-                <Label htmlFor="original_price">Original price ($) — strikethrough</Label>
+                <Label htmlFor="original_price">Original price ($)</Label>
                 <Input
                   id="original_price"
                   type="number"
@@ -807,6 +836,9 @@ export default function PlanTiersPage() {
                     setFormData({ ...formData, original_price: e.target.value })
                   }
                 />
+                <p className="text-xs text-muted-foreground">
+                  Display only, shown with strikethrough when set
+                </p>
               </div>
             </div>
             <div className="grid grid-cols-1 gap-4">
@@ -933,103 +965,197 @@ export default function PlanTiersPage() {
       </Dialog>
 
       {/* Edit Plan Modal */}
-      <Dialog open={showEditModal} onOpenChange={setShowEditModal}>
-        <DialogContent className="max-w-lg">
+      <Dialog
+        open={showEditModal}
+        onOpenChange={(open) => {
+          setShowEditModal(open);
+          if (!open) setEditingPlan(null);
+        }}
+      >
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Edit Plan</DialogTitle>
             <DialogDescription>
-              Update plan credits and settings
+              Update plan details. Display name and description sync to Stripe product.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-6 py-4">
-            {/* Plan Info Section (Read-only) */}
-            <div className="space-y-4">
-              <div>
-                <h4 className="text-sm font-semibold mb-3">Plan Info</h4>
-              </div>
-              
+            <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label>Plan Name</Label>
+                <Label htmlFor="edit_display_name">
+                  Display Name <span className="text-destructive">*</span>
+                </Label>
                 <Input
+                  id="edit_display_name"
+                  placeholder="e.g., Pro, Elite"
                   value={formData.display_name}
+                  onChange={(e) =>
+                    setFormData({ ...formData, display_name: e.target.value })
+                  }
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Plan ID (read-only)</Label>
+                <Input
+                  value={editingPlan?.name ?? ""}
                   disabled
                   className="bg-muted"
                 />
               </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label>Price</Label>
-                  <Input
-                    value={
-                      (formData.original_price.trim() !== ""
-                        ? formatPrice(parseFloat(formData.original_price)) + " → "
-                        : "") +
-                      formatPrice(parseFloat(formData.price)) +
-                      " / " +
-                      (formData.billing_cycle === "year" ? "year" : "month")
-                    }
-                    disabled
-                    className="bg-muted"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label>Billing</Label>
-                  <Input
-                    value={formData.billing_cycle === "year" ? "Per year" : "Per month"}
-                    disabled
-                    className="bg-muted"
-                  />
-                </div>
-              </div>
-
-              <Alert>
-                <AlertCircle className="h-4 w-4" />
-                <AlertDescription className="text-sm">
-                  Price is managed in Stripe. Contact dev if you need to change it.
-                </AlertDescription>
-              </Alert>
             </div>
 
-            {/* Editable Business Fields */}
-            <div className="space-y-4 pt-4 border-t">
-              <div>
-                <h4 className="text-sm font-semibold mb-3">Editable Settings</h4>
-              </div>
+            <div className="space-y-2">
+              <Label htmlFor="edit_description">Description</Label>
+              <Textarea
+                id="edit_description"
+                placeholder="Brief description of this plan..."
+                value={formData.description}
+                onChange={(e) =>
+                  setFormData({ ...formData, description: e.target.value })
+                }
+                rows={2}
+              />
+            </div>
 
+            <div className="grid grid-cols-3 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="edit_credits_monthly">
-                  Monthly Credits <span className="text-destructive">*</span>
+                <Label>Billing cycle (read-only)</Label>
+                <Select value={formData.billing_cycle}>
+                  <SelectTrigger className="bg-muted" disabled>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="month">Per month</SelectItem>
+                    <SelectItem value="year">Per year</SelectItem>
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-muted-foreground">
+                  Changing would require a new Stripe price
+                </p>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="edit_price">
+                  Price ($) <span className="text-destructive">*</span>
                 </Label>
                 <Input
-                  id="edit_credits_monthly"
+                  id="edit_price"
                   type="number"
+                  step="0.01"
                   min="0"
-                  placeholder="e.g., 30, 60, 120"
-                  value={formData.credits_monthly}
+                  value={formData.price}
                   onChange={(e) =>
-                    setFormData({ ...formData, credits_monthly: e.target.value })
+                    setFormData({ ...formData, price: e.target.value })
                   }
                 />
                 <p className="text-xs text-muted-foreground">
-                  Number of credits added to user's balance every billing cycle.
+                  Display price (Stripe amount is set at creation)
                 </p>
-                <Alert className="mt-2">
-                  <AlertCircle className="h-4 w-4" />
-                  <AlertDescription className="text-xs">
-                    <strong>Note:</strong> Changes affect future renewals and new subscribers only. 
-                    Current cycle credits remain unchanged; new value applies from the next billing cycle.
-                  </AlertDescription>
-                </Alert>
               </div>
+              <div className="space-y-2">
+                <Label htmlFor="edit_original_price">Original price ($)</Label>
+                <Input
+                  id="edit_original_price"
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  placeholder="Optional"
+                  value={formData.original_price}
+                  onChange={(e) =>
+                    setFormData({ ...formData, original_price: e.target.value })
+                  }
+                />
+                <p className="text-xs text-muted-foreground">
+                  Shown with strikethrough when set
+                </p>
+              </div>
+            </div>
 
-              <div className="flex items-center justify-between p-4 border rounded-lg">
+            <div className="space-y-2">
+              <Label htmlFor="edit_credits_monthly">
+                Monthly Credits <span className="text-destructive">*</span>
+              </Label>
+              <Input
+                id="edit_credits_monthly"
+                type="number"
+                min="0"
+                placeholder="e.g., 30, 60, 120"
+                value={formData.credits_monthly}
+                onChange={(e) =>
+                  setFormData({ ...formData, credits_monthly: e.target.value })
+                }
+              />
+              <p className="text-xs text-muted-foreground">
+                Credits added each billing cycle. Affects future renewals and new subscribers only.
+              </p>
+            </div>
+
+            <div className="space-y-2">
+              <Label>Features</Label>
+              <div className="space-y-2">
+                {formData.features.map((feature, index) => (
+                  <div key={index} className="flex items-center gap-2">
+                    <Input value={feature} disabled className="flex-1" />
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => handleRemoveFeature(index)}
+                    >
+                      <X className="h-4 w-4" />
+                    </Button>
+                  </div>
+                ))}
+                <div className="flex items-center gap-2">
+                  <Input
+                    placeholder="Add a feature..."
+                    value={featureInput}
+                    onChange={(e) => setFeatureInput(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        e.preventDefault();
+                        handleAddFeature();
+                      }
+                    }}
+                    className="flex-1"
+                  />
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    size="sm"
+                    onClick={handleAddFeature}
+                  >
+                    <Plus className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="edit_sort_order">Sort Order</Label>
+                <Input
+                  id="edit_sort_order"
+                  type="number"
+                  min="0"
+                  value={formData.sort_order}
+                  onChange={(e) =>
+                    setFormData({ ...formData, sort_order: e.target.value })
+                  }
+                />
+                <p className="text-xs text-muted-foreground">
+                  Lower numbers appear first
+                </p>
+              </div>
+            </div>
+
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex items-center justify-between p-4 border rounded-lg flex-1">
                 <div className="space-y-1">
                   <Label htmlFor="edit_is_popular" className="cursor-pointer font-medium">
                     Most Popular Badge
                   </Label>
                   <p className="text-xs text-muted-foreground">
-                    Only one plan can be "Most popular" at a time
+                    Only one plan can be &quot;Most popular&quot; at a time
                   </p>
                 </div>
                 <Switch
@@ -1037,6 +1163,18 @@ export default function PlanTiersPage() {
                   checked={formData.is_popular}
                   onCheckedChange={(checked) =>
                     setFormData({ ...formData, is_popular: checked })
+                  }
+                />
+              </div>
+              <div className="flex items-center justify-between p-4 border rounded-lg flex-1">
+                <Label htmlFor="edit_is_active" className="cursor-pointer font-medium">
+                  Active Plan
+                </Label>
+                <Switch
+                  id="edit_is_active"
+                  checked={formData.is_active}
+                  onCheckedChange={(checked) =>
+                    setFormData({ ...formData, is_active: checked })
                   }
                 />
               </div>

@@ -91,6 +91,8 @@ Deno.serve(async (req) => {
       return jsonResponse({ error: "Missing or invalid plan id" }, 400);
     }
 
+    console.log("plan id to delete:", id);
+
     // Fetch plan to get Stripe price IDs before delete (for archiving product)
     const { data: plan, error: fetchError } = await supabase
       .from("plan_tiers")
