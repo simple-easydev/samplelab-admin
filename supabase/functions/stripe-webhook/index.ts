@@ -204,11 +204,15 @@ async function handleSubscriptionCreatedOrUpdated(
 
   const isTrial = subscription.metadata?.is_trial === "true";
   const isActive = subscription.status === "active";
-  const shouldAwardCredits = !isTrial && isActive;
-  const creditsToAdd = await getCreditsForPriceId(supabase, newPriceId);
+  // Default: plan's original credit value. If paid (not trial), add +50 bonus.
+  const planCredits = await getCreditsForPriceId(supabase, newPriceId);
+  
+  // const creditsToAdd = planCredits;
+  const shouldAwardCredits = isActive && planCredits > 0;
 
-  // Award credits for new paid subscription (use plan's credits_monthly from plan_tiers)
-  if (isNewSubscription && shouldAwardCredits && creditsToAdd > 0) {
+  // Award credits for new subscription (trial = plan credits only, paid = plan credits + 50)
+  if (isNewSubscription && shouldAwardCredits) {
+    const creditsToAdd = planCredits + 50;
     await addCreditsToCustomer(
       supabase,
       customer.id,
@@ -218,8 +222,8 @@ async function handleSubscriptionCreatedOrUpdated(
     );
   }
 
-  // Award additional credits when user upgrades (use new plan's credits_monthly from plan_tiers)
-  if (isUpgrade && shouldAwardCredits && creditsToAdd > 0) {
+  // Award additional credits when user upgrades (new plan's credits_monthly from plan_tiers)
+  if (isUpgrade && shouldAwardCredits) {
     const { data: currentCustomer } = await supabase
       .from("customers")
       .select("credit_balance")
@@ -229,7 +233,7 @@ async function handleSubscriptionCreatedOrUpdated(
     await addCreditsToCustomer(
       supabase,
       customer.id,
-      creditsToAdd,
+      planCredits,
       "upgrade",
       currentBalance
     );
@@ -441,7 +445,7 @@ async function upsertSubscription(
     stripe_subscription_id: subscription.id,
     stripe_price_id: priceId,
     tier: tier,
-    status: subscription.status === "active" || subscription.status === "trialing" ? "active" : subscription.status,
+    status: subscription.status,
     stripe_status: subscription.status,
     current_period_start: currentPeriodStart,
     current_period_end: currentPeriodEnd,
