@@ -37,7 +37,7 @@ Deno.serve(async (req) => {
   }
 
   try {
-    if (req.method !== "GET") {
+    if (req.method !== "POST") {
       return jsonResponse({ error: "Method not allowed" }, 405);
     }
 
@@ -56,10 +56,15 @@ Deno.serve(async (req) => {
       },
     });
 
-    const url = new URL(req.url);
-    const visibleOnboardingParam = url.searchParams.get("visible_onboarding");
-    const filterVisibleOnboarding =
-      visibleOnboardingParam === "true" || visibleOnboardingParam === "1";
+    let filterVisibleOnboarding = false;
+    try {
+      const body = await req.json().catch(() => ({}));
+      const v = (body as { visible_onboarding?: unknown }).visible_onboarding;
+      filterVisibleOnboarding =
+        v === true || v === "true" || v === 1 || v === "1";
+    } catch {
+      // no body or invalid JSON: do not filter by visible_onboarding
+    }
 
     let query = supabase
       .from("plan_tiers")
