@@ -184,62 +184,113 @@ async function handleSubscriptionCreatedOrUpdated(
     return;
   }
 
-  // Check if this is a new subscription (not an update)
+  // Check if this is a new subscription or an update (and if update, get previous price for upgrade detection)
   const { data: existingSubscription } = await supabase
     .from("subscriptions")
-    .select("id")
+    .select("id, stripe_price_id")
     .eq("stripe_subscription_id", subscription.id)
     .maybeSingle();
 
   const isNewSubscription = !existingSubscription;
+  const newPriceId = subscription.items.data[0]?.price.id;
+  const isUpgrade =
+    !isNewSubscription &&
+    existingSubscription?.stripe_price_id &&
+    newPriceId &&
+    existingSubscription.stripe_price_id !== newPriceId;
 
   // Upsert subscription record
   await upsertSubscription(supabase, customer.id, subscription);
 
-  // Only process credits and metadata for NEW subscriptions
-  if (isNewSubscription) {
-    // Check if this was a non-trial paid plan and award 50 credits
-    const isTrial = subscription.metadata?.is_trial === "true";
-    const isActive = subscription.status === "active";
+  const isTrial = subscription.metadata?.is_trial === "true";
+  const isActive = subscription.status === "active";
+  const shouldAwardCredits = !isTrial && isActive;
+  const creditsToAdd = await getCreditsForPriceId(supabase, newPriceId);
 
-    if (!isTrial && isActive) {
-      console.log("Awarding 50 credits to customer for paid plan:", customer.id);
-      const currentBalance = customer.credit_balance || 0;
-      const newBalance = currentBalance + 50;
+  // Award credits for new paid subscription (use plan's credits_monthly from plan_tiers)
+  if (isNewSubscription && shouldAwardCredits && creditsToAdd > 0) {
+    await addCreditsToCustomer(
+      supabase,
+      customer.id,
+      creditsToAdd,
+      "new paid plan",
+      customer.credit_balance
+    );
+  }
 
-      const { error: creditError } = await supabase
-        .from("customers")
-        .update({
-          credit_balance: newBalance,
-          updated_at: new Date().toISOString(),
-        })
-        .eq("id", customer.id);
+  // Award additional credits when user upgrades (use new plan's credits_monthly from plan_tiers)
+  if (isUpgrade && shouldAwardCredits && creditsToAdd > 0) {
+    const { data: currentCustomer } = await supabase
+      .from("customers")
+      .select("credit_balance")
+      .eq("id", customer.id)
+      .single();
+    const currentBalance = (currentCustomer?.credit_balance ?? customer.credit_balance) ?? 0;
+    await addCreditsToCustomer(
+      supabase,
+      customer.id,
+      creditsToAdd,
+      "upgrade",
+      currentBalance
+    );
+  }
 
-      if (creditError) {
-        console.error("Error updating customer credit balance:", creditError);
-      } else {
-        console.log(`Successfully added 50 credits. New balance: ${newBalance}`);
+  // Only update onboarding metadata for NEW subscriptions
+  if (isNewSubscription && customer.user_id) {
+    console.log("Updating user metadata for onboarding completion:", customer.user_id);
+    const { error: metadataError } = await supabase.auth.admin.updateUserById(
+      customer.user_id,
+      {
+        user_metadata: {
+          onboarding_completed: true,
+        },
       }
-    }
+    );
 
-    // Update auth user metadata to mark onboarding as completed for all active subscriptions and trial supscription
-    if (customer.user_id) {
-      console.log("Updating user metadata for onboarding completion:", customer.user_id);
-      const { error: metadataError } = await supabase.auth.admin.updateUserById(
-        customer.user_id,
-        {
-          user_metadata: {
-            onboarding_completed: true,
-          },
-        }
-      );
-
-      if (metadataError) {
-        console.error("Error updating user metadata:", metadataError);
-      } else {
-        console.log("Successfully updated user onboarding_completed to true");
-      }
+    if (metadataError) {
+      console.error("Error updating user metadata:", metadataError);
+    } else {
+      console.log("Successfully updated user onboarding_completed to true");
     }
+  }
+}
+
+// Get credits to award for a plan from plan_tiers (credits_monthly) by Stripe price ID
+async function getCreditsForPriceId(
+  supabase: any,
+  priceId: string | undefined
+): Promise<number> {
+  if (!priceId) return 0;
+  const { data: plan } = await supabase
+    .from("plan_tiers")
+    .select("credits_monthly")
+    .eq("stripe_price_id", priceId)
+    .maybeSingle();
+  const credits = plan?.credits_monthly;
+  return typeof credits === "number" && credits > 0 ? credits : 0;
+}
+
+async function addCreditsToCustomer(
+  supabase: any,
+  customerId: string,
+  amount: number,
+  reason: string,
+  currentBalance: number
+) {
+  const newBalance = currentBalance + amount;
+  console.log(`Awarding ${amount} credits to customer for ${reason}:`, customerId);
+  const { error: creditError } = await supabase
+    .from("customers")
+    .update({
+      credit_balance: newBalance,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", customerId);
+
+  if (creditError) {
+    console.error("Error updating customer credit balance:", creditError);
+  } else {
+    console.log(`Successfully added ${amount} credits for ${reason}. New balance: ${newBalance}`);
   }
 }
 
