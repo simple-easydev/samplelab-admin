@@ -1,6 +1,5 @@
--- RPC: Return active plan tiers (Stripe products) for pricing/onboarding.
--- Optional filter: when visible_onboarding = true, only plans with visible_onboarding = true.
--- Public (anon + authenticated); plans are non-sensitive.
+-- Fix get_stripe_products: ensure visible_onboarding filter is applied when arg is true.
+-- (Original migration 20260302000003 may have been applied before the fix; this re-applies the correct logic.)
 
 CREATE OR REPLACE FUNCTION public.get_stripe_products(visible_onboarding boolean DEFAULT NULL)
 RETURNS JSONB
