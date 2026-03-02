@@ -25,6 +25,7 @@ interface PlanTierPublic {
   original_price: number | null;
   credits_monthly: number;
   is_popular: boolean;
+  visible_onboarding: boolean;
   features: string[];
   sort_order: number;
   stripe_price_id: string | null;
@@ -55,13 +56,24 @@ Deno.serve(async (req) => {
       },
     });
 
-    const { data: rows, error } = await supabase
+    const url = new URL(req.url);
+    const visibleOnboardingParam = url.searchParams.get("visible_onboarding");
+    const filterVisibleOnboarding =
+      visibleOnboardingParam === "true" || visibleOnboardingParam === "1";
+
+    let query = supabase
       .from("plan_tiers")
       .select(
-        "id, name, display_name, description, billing_cycle, price, original_price, credits_monthly, is_popular, is_active, features, sort_order, stripe_price_id"
+        "id, name, display_name, description, billing_cycle, price, original_price, credits_monthly, is_popular, is_active, visible_onboarding, features, sort_order, stripe_price_id"
       )
       .eq("is_active", true)
       .order("sort_order", { ascending: true });
+
+    if (filterVisibleOnboarding) {
+      query = query.eq("visible_onboarding", true);
+    }
+
+    const { data: rows, error } = await query;
 
     if (error) {
       console.error("get-stripe-products plan_tiers error:", error);
@@ -82,6 +94,7 @@ Deno.serve(async (req) => {
         row.original_price != null ? Number(row.original_price) : null,
       credits_monthly: Number(row.credits_monthly ?? 0),
       is_popular: Boolean(row.is_popular),
+      visible_onboarding: Boolean(row.visible_onboarding),
       features: Array.isArray(row.features) ? (row.features as string[]) : [],
       sort_order: Number(row.sort_order ?? 0),
       stripe_price_id:

@@ -74,6 +74,7 @@ interface PlanTier {
   credits_monthly: number;
   is_popular: boolean;
   is_active: boolean;
+  visible_onboarding: boolean;
   features: string[];
   sort_order: number;
   created_at: string;
@@ -90,6 +91,7 @@ interface PlanFormData {
   credits_monthly: string;
   is_popular: boolean;
   is_active: boolean;
+  visible_onboarding: boolean;
   features: string[];
   sort_order: string;
 }
@@ -104,6 +106,7 @@ const EMPTY_FORM: PlanFormData = {
   credits_monthly: "0",
   is_popular: false,
   is_active: true,
+  visible_onboarding: false,
   features: [],
   sort_order: "0",
 };
@@ -157,6 +160,7 @@ export default function PlanTiersPage() {
         credits_monthly: number;
         is_popular: boolean;
         is_active: boolean;
+        visible_onboarding: boolean;
         features: string[];
         sort_order: number;
         created_at: string;
@@ -174,6 +178,7 @@ export default function PlanTiersPage() {
         credits_monthly: row.credits_monthly ?? 0,
         is_popular: row.is_popular ?? false,
         is_active: row.is_active ?? true,
+        visible_onboarding: row.visible_onboarding ?? false,
         features: Array.isArray(row.features) ? row.features : [],
         sort_order: row.sort_order ?? 0,
         created_at: row.created_at,
@@ -225,6 +230,7 @@ export default function PlanTiersPage() {
       credits_monthly: plan.credits_monthly.toString(),
       is_popular: plan.is_popular,
       is_active: plan.is_active,
+      visible_onboarding: plan.visible_onboarding,
       features: [...plan.features],
       sort_order: plan.sort_order.toString(),
     });
@@ -323,6 +329,7 @@ export default function PlanTiersPage() {
           credits_monthly: parseInt(formData.credits_monthly) || 0,
           is_popular: formData.is_popular,
           is_active: formData.is_active,
+          visible_onboarding: formData.visible_onboarding,
           features: formData.features,
           sort_order: parseInt(formData.sort_order) || 0,
         };
@@ -351,6 +358,7 @@ export default function PlanTiersPage() {
           credits_monthly: number;
           is_popular: boolean;
           is_active: boolean;
+          visible_onboarding: boolean;
           features: string[];
           sort_order: number;
           created_at: string;
@@ -368,6 +376,7 @@ export default function PlanTiersPage() {
           credits_monthly: row.credits_monthly ?? 0,
           is_popular: row.is_popular ?? false,
           is_active: row.is_active ?? true,
+          visible_onboarding: row.visible_onboarding ?? false,
           features: Array.isArray(row.features) ? row.features : [],
           sort_order: row.sort_order ?? 0,
           created_at: row.created_at,
@@ -391,6 +400,7 @@ export default function PlanTiersPage() {
           credits_monthly: parseInt(formData.credits_monthly) || 0,
           is_popular: formData.is_popular,
           is_active: formData.is_active,
+          visible_onboarding: formData.visible_onboarding,
           features: formData.features,
           sort_order: parseInt(formData.sort_order) || 0,
         };
@@ -426,6 +436,7 @@ export default function PlanTiersPage() {
           credits_monthly: number;
           is_popular: boolean;
           is_active: boolean;
+          visible_onboarding: boolean;
           features: string[];
           sort_order: number;
           created_at: string;
@@ -443,6 +454,7 @@ export default function PlanTiersPage() {
           credits_monthly: row.credits_monthly ?? 0,
           is_popular: row.is_popular ?? false,
           is_active: row.is_active ?? true,
+          visible_onboarding: row.visible_onboarding ?? false,
           features: Array.isArray(row.features) ? row.features : [],
           sort_order: row.sort_order ?? 0,
           created_at: row.created_at,
@@ -540,6 +552,7 @@ export default function PlanTiersPage() {
         credits_monthly: number;
         is_popular: boolean;
         is_active: boolean;
+        visible_onboarding: boolean;
         features: string[];
         sort_order: number;
         created_at: string;
@@ -557,6 +570,7 @@ export default function PlanTiersPage() {
         credits_monthly: row.credits_monthly ?? 0,
         is_popular: row.is_popular ?? false,
         is_active: row.is_active ?? true,
+        visible_onboarding: row.visible_onboarding ?? false,
         features: Array.isArray(row.features) ? row.features : [],
         sort_order: row.sort_order ?? 0,
         created_at: row.created_at,
@@ -648,6 +662,7 @@ export default function PlanTiersPage() {
                   <TableHead>Billing</TableHead>
                   <TableHead>Monthly Credits</TableHead>
                   <TableHead>Most Popular</TableHead>
+                  <TableHead>Visible on onboarding</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
@@ -695,6 +710,11 @@ export default function PlanTiersPage() {
                           "Set Popular"
                         )}
                       </Button>
+                    </TableCell>
+                    <TableCell>
+                      <span className={plan.visible_onboarding ? "text-muted-foreground" : ""}>
+                        {plan.visible_onboarding ? "Yes" : "No"}
+                      </span>
                     </TableCell>
                     <TableCell className="text-right">
                       <DropdownMenu>
@@ -898,7 +918,7 @@ export default function PlanTiersPage() {
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-3 gap-4">
               <div className="flex items-center justify-between p-4 border rounded-lg">
                 <Label htmlFor="is_popular" className="cursor-pointer">
                   Mark as Popular
@@ -920,6 +940,18 @@ export default function PlanTiersPage() {
                   checked={formData.is_active}
                   onCheckedChange={(checked) =>
                     setFormData({ ...formData, is_active: checked })
+                  }
+                />
+              </div>
+              <div className="flex items-center justify-between p-4 border rounded-lg">
+                <Label htmlFor="visible_onboarding" className="cursor-pointer">
+                  Visible on onboarding
+                </Label>
+                <Switch
+                  id="visible_onboarding"
+                  checked={formData.visible_onboarding}
+                  onCheckedChange={(checked) =>
+                    setFormData({ ...formData, visible_onboarding: checked })
                   }
                 />
               </div>
@@ -1175,6 +1207,18 @@ export default function PlanTiersPage() {
                   checked={formData.is_active}
                   onCheckedChange={(checked) =>
                     setFormData({ ...formData, is_active: checked })
+                  }
+                />
+              </div>
+              <div className="flex items-center justify-between p-4 border rounded-lg flex-1">
+                <Label htmlFor="edit_visible_onboarding" className="cursor-pointer font-medium">
+                  Visible on onboarding
+                </Label>
+                <Switch
+                  id="edit_visible_onboarding"
+                  checked={formData.visible_onboarding}
+                  onCheckedChange={(checked) =>
+                    setFormData({ ...formData, visible_onboarding: checked })
                   }
                 />
               </div>

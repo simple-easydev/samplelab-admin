@@ -26,6 +26,7 @@ type PlanBody = {
   credits_monthly?: number;
   is_popular?: boolean;
   is_active?: boolean;
+  visible_onboarding?: boolean;
   features?: string[];
   sort_order?: number;
   stripe_price_id?: string | null;
@@ -158,6 +159,7 @@ Deno.serve(async (req) => {
       credits_monthly: creditsMonthly,
       is_popular: Boolean(body.is_popular),
       is_active: body.is_active !== false,
+      visible_onboarding: Boolean(body.visible_onboarding),
       features,
       sort_order: sortOrder,
       stripe_price_id: stripePriceId,

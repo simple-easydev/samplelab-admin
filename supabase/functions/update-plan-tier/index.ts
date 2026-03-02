@@ -28,6 +28,7 @@ type UpdateBody = {
   credits_monthly?: number;
   is_popular?: boolean;
   is_active?: boolean;
+  visible_onboarding?: boolean;
   features?: string[];
   sort_order?: number;
   stripe_price_id?: string | null;
@@ -130,6 +131,9 @@ Deno.serve(async (req) => {
     }
     if (body.is_active !== undefined) {
       updates.is_active = Boolean(body.is_active);
+    }
+    if (body.visible_onboarding !== undefined) {
+      updates.visible_onboarding = Boolean(body.visible_onboarding);
     }
     if (body.features !== undefined) {
       updates.features = Array.isArray(body.features)
