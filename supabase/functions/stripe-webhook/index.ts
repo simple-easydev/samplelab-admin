@@ -346,6 +346,20 @@ async function handleInvoicePaymentFailed(
   }
 }
 
+// Resolve tier from plan_tiers by Stripe price ID; "free" if not found
+async function getTierForPrice(
+  supabase: any,
+  priceId: string | undefined
+): Promise<string> {
+  if (!priceId) return "free";
+  const { data: plan } = await supabase
+    .from("plan_tiers")
+    .select("name")
+    .eq("stripe_price_id", priceId)
+    .maybeSingle();
+  return plan?.name ?? "free";
+}
+
 // Helper function to upsert subscription
 async function upsertSubscription(
   supabase: any,
@@ -353,7 +367,7 @@ async function upsertSubscription(
   subscription: Stripe.Subscription
 ) {
   const priceId = subscription.items.data[0]?.price.id;
-  const tier = mapStripePriceToTier(priceId);
+  const tier = await getTierForPrice(supabase, priceId);
   const firstItem = subscription.items.data[0];
 
   // Period dates: use subscription item path (Stripe API); fallback to subscription root if present
@@ -438,18 +452,4 @@ async function upsertSubscription(
   }
 
   console.log(`Subscription ${subscription.id} upserted successfully`);
-}
-
-// Map Stripe price ID to subscription tier
-// TODO: Update these price IDs with your actual Stripe price IDs
-function mapStripePriceToTier(priceId: string | undefined): string {
-  if (!priceId) return "free";
-
-  // Map your Stripe price IDs to tiers
-  const priceMap: Record<string, string> = {
-    "price_1T59eaCcJgbE1OPPymHFcWrA": "pro",
-    "price_1T5AM8CcJgbE1OPP67lxLhRZ": "pro"
-  };
-
-  return priceMap[priceId] || "free";
 }

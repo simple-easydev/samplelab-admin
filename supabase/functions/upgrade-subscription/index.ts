@@ -1,6 +1,6 @@
 // Supabase Edge Function: Upgrade Subscription
-// Changes the current subscription to a new plan (price). Stripe prorates the change.
-// Example: Pro -> Elite. User is charged the prorated difference; webhook updates DB.
+// Changes the current subscription to a new plan (price). User is charged the full new plan price
+// (no proration). Billing cycle resets to now; webhook updates DB.
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import Stripe from "https://esm.sh/stripe@14.21.0?target=denonext";
 
@@ -151,7 +151,8 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Update subscription to the new price; Stripe will prorate
+    // Update subscription to the new price: charge full new plan amount (no proration).
+    // billing_cycle_anchor: "now" resets the cycle so the customer is charged the full price immediately.
     await stripe.subscriptions.update(stripeSubscriptionId, {
       items: [
         {
@@ -159,13 +160,14 @@ Deno.serve(async (req) => {
           price: newPriceId,
         },
       ],
-      proration_behavior: "create_prorations",
+      proration_behavior: "none",
+      billing_cycle_anchor: "now",
     });
 
     return jsonResponse(
       {
         success: true,
-        message: `Subscription upgraded to ${planRow.display_name}. You may see a prorated charge.`,
+        message: `Subscription upgraded to ${planRow.display_name}. You have been charged the full price for the new plan.`,
         plan: planRow.display_name,
         price_id: newPriceId,
       },

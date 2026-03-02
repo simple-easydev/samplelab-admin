@@ -60,28 +60,28 @@ Deno.serve(async (req) => {
       return jsonResponse({ error: "Unauthorized" }, 401);
     }
 
-    // Get customer linked to this user
-    const { data: customer, error: customerError } = await supabase
-      .from("customers")
-      .select("id")
-      .eq("user_id", user.id)
-      .maybeSingle();
+    const anonKey = Deno.env.get("SUPABASE_ANON_KEY");
+    if (!anonKey) {
+      console.error("Missing SUPABASE_ANON_KEY (required to call get_my_billing_info as user)");
+      return jsonResponse({ error: "Server configuration error" }, 500);
+    }
+    // Resolve customer + subscription from auth (same logic as get_my_billing_info RPC)
+    const supabaseAsUser = createClient(supabaseUrl, anonKey, {
+      global: { headers: { Authorization: authHeader } },
+      auth: { autoRefreshToken: false, persistSession: false },
+    });
+    const { data: billing, error: billingError } = await supabaseAsUser.rpc("get_my_billing_info");
 
-    if (customerError || !customer) {
-      return jsonResponse({ error: "Customer not found" }, 404);
+    if (billingError) {
+      console.error("get_my_billing_info error:", billingError);
+      return jsonResponse({ error: "Failed to load billing info" }, 500);
     }
 
-    // Get active subscription (active or trialing) that is not already set to cancel at period end
-    const { data: subscription, error: subError } = await supabase
-      .from("subscriptions")
-      .select("id, stripe_subscription_id, current_period_end, cancel_at_period_end")
-      .eq("customer_id", customer.id)
-      .in("status", ["active", "trialing"])
-      .maybeSingle();
+    const customer = billing?.customer ?? null;
+    const subscription = billing?.subscription ?? null;
 
-    if (subError) {
-      console.error("Subscription lookup error:", subError);
-      return jsonResponse({ error: "Failed to find subscription" }, 500);
+    if (!customer) {
+      return jsonResponse({ error: "Customer not found" }, 404);
     }
 
     if (!subscription) {
