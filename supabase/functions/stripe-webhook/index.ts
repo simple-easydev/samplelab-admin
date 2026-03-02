@@ -202,7 +202,6 @@ async function handleSubscriptionCreatedOrUpdated(
   // Upsert subscription record
   await upsertSubscription(supabase, customer.id, subscription);
 
-  const isTrial = subscription.metadata?.is_trial === "true";
   const isActive = subscription.status === "active";
   // Default: plan's original credit value. If paid (not trial), add +50 bonus.
   const planCredits = await getCreditsForPriceId(supabase, newPriceId);
