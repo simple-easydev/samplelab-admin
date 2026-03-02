@@ -141,6 +141,8 @@ verify_jwt = false
 verify_jwt = false
 [functions.cancel-subscription]
 verify_jwt = false
+[functions.upgrade-subscription]
+verify_jwt = false
 
 [analytics]
 enabled = false
