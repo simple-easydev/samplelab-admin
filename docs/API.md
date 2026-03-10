@@ -65,6 +65,7 @@ Returns all samples with pack, creator, genre, and stem count. For admin library
 |-------|------|-------------|
 | id | uuid | Sample ID |
 | name | text | Sample name |
+| audio_url | text | URL to the sample audio file |
 | pack_id | uuid | Pack ID |
 | pack_name | text | Pack name |
 | creator_name | text | Creator display name |
@@ -77,6 +78,7 @@ Returns all samples with pack, creator, genre, and stem count. For admin library
 | has_stems | boolean | Whether sample has stems |
 | stems_count | bigint | Number of stem files |
 | created_at | timestamptz | Created at |
+| metadata | jsonb | Optional: `{ "bars": number[], "duration_seconds": number }` for waveform |
 
 **Example**
 

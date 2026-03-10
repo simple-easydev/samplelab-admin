@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { toast } from "sonner";
 import {
@@ -126,6 +126,10 @@ export default function EditPackPage() {
 
   // New samples to add
   const [newSampleFiles, setNewSampleFiles] = useState<NewSampleFile[]>([]);
+  // Waveform data (bars + duration) per new sample id, for saving to samples.metadata
+  const [newSampleWaveformMeta, setNewSampleWaveformMeta] = useState<
+    Record<string, { bars: number[]; durationSeconds: number }>
+  >({});
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [uploadProgress, setUploadProgress] = useState({
@@ -325,6 +329,11 @@ export default function EditPackPage() {
 
   const handleRemoveNewSample = (sampleId: string) => {
     setNewSampleFiles((prev) => prev.filter((s) => s.id !== sampleId));
+    setNewSampleWaveformMeta((prev) => {
+      const next = { ...prev };
+      delete next[sampleId];
+      return next;
+    });
   };
 
   const handleMarkExistingSampleForDeletion = (sampleId: string) => {
@@ -379,6 +388,23 @@ export default function EditPackPage() {
       );
     }
   };
+
+  const handleWaveformReady = useCallback(
+    (sampleId: string, durationFormatted: string, waveformData?: { bars: number[]; durationSeconds: number }) => {
+      setNewSampleFiles((prev) =>
+        prev.map((s) =>
+          s.id === sampleId && !s.length ? { ...s, length: durationFormatted } : s
+        )
+      );
+      if (waveformData) {
+        setNewSampleWaveformMeta((prev) => ({
+          ...prev,
+          [sampleId]: waveformData,
+        }));
+      }
+    },
+    []
+  );
 
   const togglePlaySample = (sampleId: string, audioUrl: string) => {
     if (playingSampleId === sampleId) {
@@ -581,6 +607,16 @@ export default function EditPackPage() {
             }
           }
 
+          // Build metadata from waveform (bars + duration) when available
+          const waveformMeta = newSampleWaveformMeta[sample.id];
+          const metadata =
+            waveformMeta ?
+              {
+                bars: waveformMeta.bars,
+                duration_seconds: waveformMeta.durationSeconds,
+              }
+            : null;
+
           // Insert sample into database
           const { data: sampleData, error: sampleError } = await supabase
             .from("samples")
@@ -596,6 +632,7 @@ export default function EditPackPage() {
               credit_cost: sample.creditCost ? parseInt(sample.creditCost) : null,
               has_stems: sample.hasStems,
               status: "Active",
+              metadata,
             })
             .select()
             .single();
@@ -1121,15 +1158,7 @@ export default function EditPackPage() {
         onUpdateNewSample={handleUpdateNewSample}
         onStemUpload={(sampleId, files) => handleStemUpload(sampleId, files, true)}
         onRemoveStems={(sampleId) => handleRemoveStems(sampleId, true)}
-        onWaveformReady={(sampleId, durationFormatted) => {
-          setNewSampleFiles((prev) =>
-            prev.map((s) =>
-              s.id === sampleId && !s.length
-                ? { ...s, length: durationFormatted }
-                : s
-            )
-          );
-        }}
+        onWaveformReady={handleWaveformReady}
       />
 
       {/* Status Summary */}

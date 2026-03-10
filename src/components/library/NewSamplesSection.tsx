@@ -40,8 +40,12 @@ interface NewSamplesSectionProps {
   onUpdateNewSample: (sampleId: string, field: string, value: any) => void;
   onStemUpload: (sampleId: string, files: FileList | null) => void;
   onRemoveStems: (sampleId: string) => void;
-  /** Called when waveform is ready; use to e.g. set sample length from durationFormatted */
-  onWaveformReady?: (sampleId: string, durationFormatted: string) => void;
+  /** Called when waveform is ready; use to set length and/or store bars + duration for saving */
+  onWaveformReady?: (
+    sampleId: string,
+    durationFormatted: string,
+    waveformData?: { bars: number[]; durationSeconds: number }
+  ) => void;
 }
 
 function NewSampleRow({
@@ -66,14 +70,21 @@ function NewSampleRow({
   onUpdateNewSample: (id: string, field: string, value: any) => void;
   onStemUpload: (id: string, files: FileList | null) => void;
   onRemoveStems: (id: string) => void;
-  onWaveformReady?: (sampleId: string, durationFormatted: string) => void;
+  onWaveformReady?: (
+    sampleId: string,
+    durationFormatted: string,
+    waveformData?: { bars: number[]; durationSeconds: number }
+  ) => void;
 }) {
   const { data: waveform, loading: waveformLoading, error: waveformError } = useWaveform(sample.file);
 
-  // Auto-fill length when waveform is ready
+  // When waveform is ready: set length and pass bars + duration for saving to DB
   useEffect(() => {
     if (waveform && onWaveformReady) {
-      onWaveformReady(sample.id, waveform.durationFormatted);
+      onWaveformReady(sample.id, waveform.durationFormatted, {
+        bars: waveform.bars,
+        durationSeconds: waveform.durationSeconds,
+      });
     }
   }, [waveform, sample.id, onWaveformReady]);
 
