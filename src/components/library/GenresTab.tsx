@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { toast } from "sonner";
 import { 
   Tag, 
@@ -13,7 +13,8 @@ import {
   Plus,
   Check,
   X,
-  Hash
+  Hash,
+  Upload
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -57,6 +58,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { supabase } from "@/lib/supabase";
+import { uploadGenreThumbnail } from "@/lib/audio-upload";
 
 type SortOption = "a-z" | "z-a" | "most-used" | "popular" | "trending";
 type StatusFilter = "all" | "active" | "inactive";
@@ -69,13 +71,18 @@ interface Genre {
   created_at: string;
   packs_count: number;
   samples_count: number;
+  thumbnail_url: string | null;
 }
 
 interface GenreFormData {
   name: string;
   description: string;
   is_active: boolean;
+   thumbnail_url: string;
 }
+
+const THUMBNAIL_ACCEPT = "image/jpeg,image/jpg,image/png,image/webp";
+const THUMBNAIL_MAX_MB = 2;
 
 export function GenresTab() {
   const [genres, setGenres] = useState<Genre[]>([]);
@@ -95,6 +102,7 @@ export function GenresTab() {
     name: "",
     description: "",
     is_active: true,
+    thumbnail_url: "",
   });
   const [isSaving, setIsSaving] = useState(false);
 
@@ -103,6 +111,18 @@ export function GenresTab() {
   const [showRemoveDialog, setShowRemoveDialog] = useState(false);
   const [selectedGenre, setSelectedGenre] = useState<Genre | null>(null);
   const [isUpdating, setIsUpdating] = useState(false);
+
+  // Add modal thumbnail upload
+  const [addThumbnailFile, setAddThumbnailFile] = useState<File | null>(null);
+  const [addThumbnailPreview, setAddThumbnailPreview] = useState<string | null>(null);
+  const [addThumbnailDragging, setAddThumbnailDragging] = useState(false);
+  const addThumbnailInputRef = useRef<HTMLInputElement>(null);
+
+  // Edit modal thumbnail upload
+  const [editThumbnailFile, setEditThumbnailFile] = useState<File | null>(null);
+  const [editThumbnailPreview, setEditThumbnailPreview] = useState<string | null>(null);
+  const [editThumbnailDragging, setEditThumbnailDragging] = useState(false);
+  const editThumbnailInputRef = useRef<HTMLInputElement>(null);
 
   // Fetch genres from Supabase
   useEffect(() => {
@@ -125,6 +145,7 @@ export function GenresTab() {
         created_at: string;
         packs_count: number;
         samples_count: number;
+        thumbnail_url: string | null;
       }>;
 
       setGenres(
@@ -136,6 +157,7 @@ export function GenresTab() {
           created_at: row.created_at,
           packs_count: Number(row.packs_count),
           samples_count: Number(row.samples_count),
+          thumbnail_url: row.thumbnail_url,
         }))
       );
     } catch (err: unknown) {
@@ -185,8 +207,31 @@ export function GenresTab() {
       name: "",
       description: "",
       is_active: true,
+      thumbnail_url: "",
     });
+    setAddThumbnailFile(null);
+    setAddThumbnailPreview(null);
     setShowAddModal(true);
+  };
+
+  const handleAddThumbnailFileSelect = (file: File) => {
+    if (!file.type.startsWith("image/")) {
+      toast.error("Please select an image file (JPG, PNG, WebP)");
+      return;
+    }
+    if (file.size > THUMBNAIL_MAX_MB * 1024 * 1024) {
+      toast.error(`Image must be under ${THUMBNAIL_MAX_MB}MB`);
+      return;
+    }
+    setAddThumbnailFile(file);
+    setAddThumbnailPreview(URL.createObjectURL(file));
+  };
+
+  const handleAddThumbnailRemove = () => {
+    if (addThumbnailPreview) URL.revokeObjectURL(addThumbnailPreview);
+    setAddThumbnailFile(null);
+    setAddThumbnailPreview(null);
+    setFormData((prev) => ({ ...prev, thumbnail_url: "" }));
   };
 
   // Handle Edit Genre
@@ -196,8 +241,31 @@ export function GenresTab() {
       name: genre.name,
       description: genre.description || "",
       is_active: genre.is_active,
+      thumbnail_url: genre.thumbnail_url || "",
     });
+    setEditThumbnailFile(null);
+    setEditThumbnailPreview(null);
     setShowEditModal(true);
+  };
+
+  const handleEditThumbnailFileSelect = (file: File) => {
+    if (!file.type.startsWith("image/")) {
+      toast.error("Please select an image file (JPG, PNG, WebP)");
+      return;
+    }
+    if (file.size > THUMBNAIL_MAX_MB * 1024 * 1024) {
+      toast.error(`Image must be under ${THUMBNAIL_MAX_MB}MB`);
+      return;
+    }
+    setEditThumbnailFile(file);
+    setEditThumbnailPreview(URL.createObjectURL(file));
+  };
+
+  const handleEditThumbnailRemove = () => {
+    if (editThumbnailPreview) URL.revokeObjectURL(editThumbnailPreview);
+    setEditThumbnailFile(null);
+    setEditThumbnailPreview(null);
+    setFormData((prev) => ({ ...prev, thumbnail_url: "" }));
   };
 
   // Handle Disable Genre
@@ -222,11 +290,23 @@ export function GenresTab() {
     try {
       setIsSaving(true);
 
+      let thumbnailUrl = formData.thumbnail_url.trim() || null;
+      if (addThumbnailFile) {
+        const result = await uploadGenreThumbnail(addThumbnailFile);
+        if (!result.success) {
+          toast.error(result.error ?? "Thumbnail upload failed");
+          setIsSaving(false);
+          return;
+        }
+        thumbnailUrl = result.url ?? null;
+      }
+
       // @ts-expect-error - Supabase type inference issue
       const { error } = await supabase.from("genres").insert({
         name: formData.name.trim(),
         description: formData.description.trim() || null,
         is_active: formData.is_active,
+        thumbnail_url: thumbnailUrl,
       });
 
       if (error) throw error;
@@ -255,13 +335,24 @@ export function GenresTab() {
     try {
       setIsSaving(true);
 
+      let thumbnailUrl = formData.thumbnail_url.trim() || null;
+      if (editThumbnailFile) {
+        const result = await uploadGenreThumbnail(editThumbnailFile);
+        if (!result.success) {
+          toast.error(result.error ?? "Thumbnail upload failed");
+          setIsSaving(false);
+          return;
+        }
+        thumbnailUrl = result.url ?? null;
+      }
+
       const { error } = await supabase
         .from("genres")
-        // @ts-expect-error - Supabase type inference issue
         .update({
           name: formData.name.trim(),
           description: formData.description.trim() || null,
           is_active: formData.is_active,
+          thumbnail_url: thumbnailUrl,
         })
         .eq("id", editingGenre.id);
 
@@ -485,7 +576,10 @@ export function GenresTab() {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Genre Name</TableHead>
+                    <TableHead>Genre</TableHead>
+                    <TableHead className="w-[80px] text-center">
+                      Thumbnail
+                    </TableHead>
                     <TableHead className="text-center">Packs</TableHead>
                     <TableHead className="text-center">Samples</TableHead>
                     <TableHead>Status</TableHead>
@@ -504,6 +598,19 @@ export function GenresTab() {
                             </p>
                           )}
                         </div>
+                      </TableCell>
+                      <TableCell className="text-center">
+                        {genre.thumbnail_url ? (
+                          <img
+                            src={genre.thumbnail_url}
+                            alt={genre.name}
+                            className="inline-block h-10 w-10 rounded-md object-cover"
+                          />
+                        ) : (
+                          <div className="inline-flex h-10 w-10 items-center justify-center rounded-md bg-muted text-xs text-muted-foreground">
+                            No image
+                          </div>
+                        )}
                       </TableCell>
                       <TableCell className="text-center">
                         <div className="flex items-center justify-center gap-1">
@@ -580,7 +687,17 @@ export function GenresTab() {
       </Card>
 
       {/* Add Genre Modal */}
-      <Dialog open={showAddModal} onOpenChange={setShowAddModal}>
+      <Dialog
+        open={showAddModal}
+        onOpenChange={(open) => {
+          if (!open && addThumbnailPreview) URL.revokeObjectURL(addThumbnailPreview);
+          setShowAddModal(open);
+          if (!open) {
+            setAddThumbnailFile(null);
+            setAddThumbnailPreview(null);
+          }
+        }}
+      >
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Add New Genre</DialogTitle>
@@ -615,6 +732,91 @@ export function GenresTab() {
                 rows={3}
                 disabled={isSaving}
               />
+            </div>
+            <div className="space-y-2">
+              <Label>Thumbnail (Optional)</Label>
+              <div className="flex flex-col sm:flex-row gap-4">
+                <div className="flex items-center gap-3">
+                  {(addThumbnailPreview || formData.thumbnail_url) ? (
+                    <div className="relative shrink-0">
+                      <img
+                        src={addThumbnailPreview || formData.thumbnail_url}
+                        alt="Thumbnail preview"
+                        className="h-20 w-20 rounded-md border object-cover"
+                      />
+                      <button
+                        type="button"
+                        onClick={handleAddThumbnailRemove}
+                        disabled={isSaving}
+                        className="absolute -top-1.5 -right-1.5 rounded-full bg-destructive p-1 text-destructive-foreground hover:bg-destructive/90"
+                      >
+                        <X className="h-3 w-3" />
+                      </button>
+                    </div>
+                  ) : (
+                    <div
+                      onDragOver={(e) => {
+                        e.preventDefault();
+                        setAddThumbnailDragging(true);
+                      }}
+                      onDragLeave={(e) => {
+                        e.preventDefault();
+                        setAddThumbnailDragging(false);
+                      }}
+                      onDrop={(e) => {
+                        e.preventDefault();
+                        setAddThumbnailDragging(false);
+                        const file = e.dataTransfer.files[0];
+                        if (file) handleAddThumbnailFileSelect(file);
+                      }}
+                      className={`flex h-20 w-20 shrink-0 flex-col items-center justify-center rounded-md border-2 border-dashed text-muted-foreground transition-colors ${
+                        addThumbnailDragging
+                          ? "border-primary bg-primary/5"
+                          : "border-muted-foreground/25 hover:border-primary/50"
+                      }`}
+                    >
+                      <Upload className="h-6 w-6 mb-0.5" />
+                      <span className="text-[10px]">Upload</span>
+                    </div>
+                  )}
+                  <input
+                    ref={addThumbnailInputRef}
+                    type="file"
+                    accept={THUMBNAIL_ACCEPT}
+                    className="hidden"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) handleAddThumbnailFileSelect(file);
+                      e.target.value = "";
+                    }}
+                  />
+                  {!addThumbnailPreview && !formData.thumbnail_url && (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      disabled={isSaving}
+                      onClick={() => addThumbnailInputRef.current?.click()}
+                    >
+                      Choose image
+                    </Button>
+                  )}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-xs text-muted-foreground mb-1">
+                    JPG, PNG or WebP, max {THUMBNAIL_MAX_MB}MB
+                  </p>
+                  <Input
+                    id="genre-thumbnail"
+                    placeholder="Or paste image URL..."
+                    value={formData.thumbnail_url}
+                    onChange={(e) =>
+                      setFormData({ ...formData, thumbnail_url: e.target.value })
+                    }
+                    disabled={isSaving}
+                  />
+                </div>
+              </div>
             </div>
             <div className="flex items-center gap-2">
               <input
@@ -655,7 +857,17 @@ export function GenresTab() {
       </Dialog>
 
       {/* Edit Genre Modal */}
-      <Dialog open={showEditModal} onOpenChange={setShowEditModal}>
+      <Dialog
+        open={showEditModal}
+        onOpenChange={(open) => {
+          if (!open && editThumbnailPreview) URL.revokeObjectURL(editThumbnailPreview);
+          setShowEditModal(open);
+          if (!open) {
+            setEditThumbnailFile(null);
+            setEditThumbnailPreview(null);
+          }
+        }}
+      >
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Edit Genre</DialogTitle>
@@ -692,6 +904,91 @@ export function GenresTab() {
                 rows={3}
                 disabled={isSaving}
               />
+            </div>
+            <div className="space-y-2">
+              <Label>Thumbnail (Optional)</Label>
+              <div className="flex flex-col sm:flex-row gap-4">
+                <div className="flex items-center gap-3">
+                  {(editThumbnailPreview || formData.thumbnail_url) ? (
+                    <div className="relative shrink-0">
+                      <img
+                        src={editThumbnailPreview || formData.thumbnail_url}
+                        alt="Thumbnail preview"
+                        className="h-20 w-20 rounded-md border object-cover"
+                      />
+                      <button
+                        type="button"
+                        onClick={handleEditThumbnailRemove}
+                        disabled={isSaving}
+                        className="absolute -top-1.5 -right-1.5 rounded-full bg-destructive p-1 text-destructive-foreground hover:bg-destructive/90"
+                      >
+                        <X className="h-3 w-3" />
+                      </button>
+                    </div>
+                  ) : (
+                    <div
+                      onDragOver={(e) => {
+                        e.preventDefault();
+                        setEditThumbnailDragging(true);
+                      }}
+                      onDragLeave={(e) => {
+                        e.preventDefault();
+                        setEditThumbnailDragging(false);
+                      }}
+                      onDrop={(e) => {
+                        e.preventDefault();
+                        setEditThumbnailDragging(false);
+                        const file = e.dataTransfer.files[0];
+                        if (file) handleEditThumbnailFileSelect(file);
+                      }}
+                      className={`flex h-20 w-20 shrink-0 flex-col items-center justify-center rounded-md border-2 border-dashed text-muted-foreground transition-colors ${
+                        editThumbnailDragging
+                          ? "border-primary bg-primary/5"
+                          : "border-muted-foreground/25 hover:border-primary/50"
+                      }`}
+                    >
+                      <Upload className="h-6 w-6 mb-0.5" />
+                      <span className="text-[10px]">Upload</span>
+                    </div>
+                  )}
+                  <input
+                    ref={editThumbnailInputRef}
+                    type="file"
+                    accept={THUMBNAIL_ACCEPT}
+                    className="hidden"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) handleEditThumbnailFileSelect(file);
+                      e.target.value = "";
+                    }}
+                  />
+                  {!editThumbnailPreview && !formData.thumbnail_url && (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      disabled={isSaving}
+                      onClick={() => editThumbnailInputRef.current?.click()}
+                    >
+                      Choose image
+                    </Button>
+                  )}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-xs text-muted-foreground mb-1">
+                    JPG, PNG or WebP, max {THUMBNAIL_MAX_MB}MB
+                  </p>
+                  <Input
+                    id="edit-genre-thumbnail"
+                    placeholder="Or paste image URL..."
+                    value={formData.thumbnail_url}
+                    onChange={(e) =>
+                      setFormData({ ...formData, thumbnail_url: e.target.value })
+                    }
+                    disabled={isSaving}
+                  />
+                </div>
+              </div>
             </div>
             <div className="flex items-center gap-2">
               <input
