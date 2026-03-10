@@ -31,6 +31,7 @@ import {
   DropdownMenuTrigger,
   DropdownMenuCheckboxItem,
 } from "@/components/ui/dropdown-menu";
+import { NewSamplesSection } from "@/components/library/NewSamplesSection";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -1112,189 +1113,24 @@ export default function EditPackPage() {
       )}
 
       {/* Add New Samples */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Add New Samples</CardTitle>
-          <CardDescription>Upload additional audio files to this pack</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div>
-            <Input
-              type="file"
-              accept=".wav,.mp3"
-              multiple
-              onChange={handleSampleUpload}
-              disabled={isSubmitting}
-              className="cursor-pointer"
-            />
-            <p className="text-sm text-muted-foreground mt-2">
-              Supported formats: WAV, MP3 • You can select multiple files
-            </p>
-          </div>
-
-          {newSampleFiles.length > 0 && (
-            <div className="space-y-3">
-              <h4 className="font-medium">New Samples ({newSampleFiles.length})</h4>
-              {newSampleFiles.map((sample) => (
-                <div key={sample.id} className="p-4 border rounded-lg space-y-3">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <FileAudio className="h-5 w-5 text-muted-foreground" />
-                      <div>
-                        <p className="font-medium">{sample.file.name}</p>
-                        <p className="text-xs text-muted-foreground">
-                          {(sample.file.size / 1024 / 1024).toFixed(2)} MB
-                        </p>
-                      </div>
-                    </div>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => handleRemoveNewSample(sample.id)}
-                      disabled={isSubmitting}
-                    >
-                      <X className="h-4 w-4" />
-                    </Button>
-                  </div>
-
-                  <div className="grid grid-cols-5 gap-3">
-                    <div>
-                      <Label className="text-xs">Name</Label>
-                      <Input
-                        value={sample.name}
-                        onChange={(e) =>
-                          handleUpdateNewSample(sample.id, "name", e.target.value)
-                        }
-                        placeholder="Sample name"
-                        disabled={isSubmitting}
-                        className="h-9"
-                      />
-                    </div>
-                    <div>
-                      <Label className="text-xs">BPM</Label>
-                      <Input
-                        value={sample.bpm}
-                        onChange={(e) =>
-                          handleUpdateNewSample(sample.id, "bpm", e.target.value)
-                        }
-                        placeholder="120"
-                        disabled={isSubmitting}
-                        className="h-9"
-                      />
-                    </div>
-                    <div>
-                      <Label className="text-xs">Key</Label>
-                      <Input
-                        value={sample.key}
-                        onChange={(e) =>
-                          handleUpdateNewSample(sample.id, "key", e.target.value)
-                        }
-                        placeholder="C"
-                        disabled={isSubmitting}
-                        className="h-9"
-                      />
-                    </div>
-                    <div>
-                      <Label className="text-xs">Type</Label>
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            className="w-full h-9"
-                            disabled={isSubmitting}
-                          >
-                            {sample.type}
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent>
-                          <DropdownMenuItem
-                            onClick={() => handleUpdateNewSample(sample.id, "type", "Loop")}
-                          >
-                            Loop
-                          </DropdownMenuItem>
-                          <DropdownMenuItem
-                            onClick={() =>
-                              handleUpdateNewSample(sample.id, "type", "One-shot")
-                            }
-                          >
-                            One-shot
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </div>
-                    <div>
-                      <Label className="text-xs">Credit Cost</Label>
-                      <Input
-                        value={sample.creditCost}
-                        onChange={(e) =>
-                          handleUpdateNewSample(sample.id, "creditCost", e.target.value)
-                        }
-                        placeholder="Auto"
-                        disabled={isSubmitting}
-                        className="h-9"
-                      />
-                    </div>
-                  </div>
-
-                  {/* Stems upload */}
-                  <div className="space-y-2">
-                    <div className="flex items-center gap-2">
-                      <input
-                        type="checkbox"
-                        id={`stems-${sample.id}`}
-                        checked={sample.hasStems}
-                        onChange={(e) =>
-                          handleUpdateNewSample(sample.id, "hasStems", e.target.checked)
-                        }
-                        disabled={isSubmitting}
-                        className="h-4 w-4 rounded border-gray-300"
-                      />
-                      <Label
-                        htmlFor={`stems-${sample.id}`}
-                        className="cursor-pointer text-sm"
-                      >
-                        Has stems?
-                      </Label>
-                    </div>
-
-                    {sample.hasStems && (
-                      <div>
-                        <Input
-                          type="file"
-                          accept=".wav,.mp3"
-                          multiple
-                          onChange={(e) =>
-                            handleStemUpload(sample.id, e.target.files, true)
-                          }
-                          disabled={isSubmitting}
-                          className="cursor-pointer h-9"
-                        />
-                        {sample.stemFiles.length > 0 && (
-                          <div className="mt-2">
-                            <p className="text-xs text-muted-foreground">
-                              {sample.stemFiles.length} stem file(s) selected
-                            </p>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => handleRemoveStems(sample.id, true)}
-                              disabled={isSubmitting}
-                              className="h-7 text-xs mt-1"
-                            >
-                              Remove stems
-                            </Button>
-                          </div>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </CardContent>
-      </Card>
+      <NewSamplesSection
+        newSampleFiles={newSampleFiles}
+        isSubmitting={isSubmitting}
+        onSampleUpload={handleSampleUpload}
+        onRemoveNewSample={handleRemoveNewSample}
+        onUpdateNewSample={handleUpdateNewSample}
+        onStemUpload={(sampleId, files) => handleStemUpload(sampleId, files, true)}
+        onRemoveStems={(sampleId) => handleRemoveStems(sampleId, true)}
+        onWaveformReady={(sampleId, durationFormatted) => {
+          setNewSampleFiles((prev) =>
+            prev.map((s) =>
+              s.id === sampleId && !s.length
+                ? { ...s, length: durationFormatted }
+                : s
+            )
+          );
+        }}
+      />
 
       {/* Status Summary */}
       <Card>
