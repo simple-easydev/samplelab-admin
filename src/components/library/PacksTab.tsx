@@ -80,96 +80,61 @@ export function PacksTab() {
   const [selectedPack, setSelectedPack] = useState<Pack | null>(null);
   const [isUpdating, setIsUpdating] = useState(false);
 
-  // Fetch packs from Supabase
+  // Fetch packs from Supabase via RPC
   useEffect(() => {
     async function fetchPacks() {
       try {
         setIsLoading(true);
         setError(null);
 
-        // Fetch packs with related data
-        const { data: packsData, error: packsError } = await supabase
-          .from("packs")
-          .select(`
-            id,
-            name,
-            creator_id,
-            category_id,
-            tags,
-            download_count,
-            status,
-            cover_url,
-            created_at,
-            is_premium,
-            creators (name),
-            categories (name)
-          `)
-          .order("created_at", { ascending: false });
+        const { data, error: rpcError } = await supabase.rpc("get_all_packs_for_admin");
+        if (rpcError) throw rpcError;
 
-        if (packsError) throw packsError;
+        const rows = (data ?? []) as Array<{
+          id: string;
+          name: string;
+          creator_id: string | null;
+          category_id: string | null;
+          creator_name: string;
+          category_name: string;
+          genres: string[] | null;
+          tags: string[] | null;
+          samples_count: number;
+          download_count: number;
+          status: string;
+          cover_url: string | null;
+          created_at: string;
+          is_premium: boolean;
+        }>;
 
-        // Get samples count for each pack (exclude soft-deleted samples)
-        const { data: samplesCount, error: samplesError } = await supabase
-          .from("samples")
-          .select("pack_id, id")
-          .in("status", ["Active", "Disabled"]); // Exclude Deleted samples
-
-        if (samplesError) throw samplesError;
-
-        // Count samples per pack
-        const samplesByPack = samplesCount?.reduce((acc, sample: any) => {
-          acc[sample.pack_id] = (acc[sample.pack_id] || 0) + 1;
-          return acc;
-        }, {} as Record<string, number>) || {};
-
-        // Fetch genres for each pack
-        const { data: packGenresData, error: genresError } = await supabase
-          .from("pack_genres")
-          .select(`
-            pack_id,
-            genres (name)
-          `);
-
-        if (genresError) throw genresError;
-
-        // Group genres by pack
-        const genresByPack = packGenresData?.reduce((acc, pg: any) => {
-          if (!acc[pg.pack_id]) acc[pg.pack_id] = [];
-          acc[pg.pack_id].push((pg.genres as any)?.name);
-          return acc;
-        }, {} as Record<string, string[]>) || {};
-
-        // Transform data
-        const transformedPacks: Pack[] = (packsData || []).map((pack: any) => ({
-          id: pack.id,
-          name: pack.name,
-          creator_id: pack.creator_id,
-          creator_name: pack.creators?.name || "Unknown",
-          category_id: pack.category_id,
-          category_name: pack.categories?.name || "Uncategorized",
-          genres: genresByPack[pack.id] || [],
-          tags: pack.tags || [],
-          samples_count: samplesByPack[pack.id] || 0,
-          downloads: pack.download_count || 0,
-          status: pack.status,
-          cover_url: pack.cover_url,
-          created_at: pack.created_at,
-          is_premium: pack.is_premium,
+        const transformedPacks: Pack[] = rows.map((row) => ({
+          id: row.id,
+          name: row.name,
+          creator_id: row.creator_id ?? "",
+          creator_name: row.creator_name || "Unknown",
+          category_id: row.category_id ?? "",
+          category_name: row.category_name || "Uncategorized",
+          genres: row.genres ?? [],
+          tags: row.tags ?? [],
+          samples_count: Number(row.samples_count),
+          downloads: Number(row.download_count),
+          status: row.status as "Draft" | "Published" | "Disabled",
+          cover_url: row.cover_url ?? undefined,
+          created_at: row.created_at,
+          is_premium: row.is_premium,
         }));
 
         setPacks(transformedPacks);
 
-        // Extract unique values for filters
-        const creators = Array.from(new Set(transformedPacks.map(p => p.creator_name)));
-        const genres = Array.from(new Set(transformedPacks.flatMap(p => p.genres)));
-        const categories = Array.from(new Set(transformedPacks.map(p => p.category_name)));
-        const tags = Array.from(new Set(transformedPacks.flatMap(p => p.tags)));
+        const creators = Array.from(new Set(transformedPacks.map((p) => p.creator_name)));
+        const genres = Array.from(new Set(transformedPacks.flatMap((p) => p.genres)));
+        const categories = Array.from(new Set(transformedPacks.map((p) => p.category_name)));
+        const tags = Array.from(new Set(transformedPacks.flatMap((p) => p.tags)));
 
         setUniqueCreators(creators);
         setUniqueGenres(genres);
         setUniqueCategories(categories);
         setUniqueTags(tags);
-
       } catch (err) {
         console.error("Error fetching packs:", err);
         setError(err instanceof Error ? err.message : "Failed to load packs");
