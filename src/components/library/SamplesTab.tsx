@@ -27,9 +27,9 @@ type SampleStatusFilter = "all" | "Active" | "Disabled";
 type SortOption = "a-z" | "newest" | "most-downloaded";
 
 interface Sample {
-  id: number;
+  id: string;
   name: string;
-  pack: { id: number; name: string };
+  pack: { id: string; name: string };
   creator: string;
   genre: string;
   bpm: number | null;
@@ -49,6 +49,8 @@ interface SamplesTabProps {
   uniqueCreators: string[];
   uniqueGenres: string[];
   uniqueKeys: string[];
+  isLoading?: boolean;
+  isError?: unknown;
 }
 
 export function SamplesTab({
@@ -58,6 +60,8 @@ export function SamplesTab({
   uniqueCreators,
   uniqueGenres,
   uniqueKeys,
+  isLoading,
+  isError,
 }: SamplesTabProps) {
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<SampleStatusFilter>("all");
@@ -133,6 +137,28 @@ export function SamplesTab({
           return 0;
       }
     });
+
+  if (isLoading) {
+    return (
+      <div className="space-y-4">
+        <Card>
+          <CardContent className="flex items-center justify-center py-12">
+            <p className="text-muted-foreground">Loading samples…</p>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  if (isError) {
+    return (
+      <div className="space-y-4">
+        <Alert variant="destructive">
+          <AlertDescription>Failed to load samples. Please try again.</AlertDescription>
+        </Alert>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-4">

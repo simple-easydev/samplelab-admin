@@ -130,6 +130,75 @@ export function useCustomers() {
   return { customers: data?.customers ?? [], isLoading, isError: error, refresh: mutate };
 }
 
+/** Shape returned by get_all_samples_for_admin RPC (one row per sample). */
+export interface AdminSampleRow {
+  id: string;
+  name: string;
+  pack_id: string;
+  pack_name: string;
+  creator_name: string;
+  genre: string;
+  bpm: number | null;
+  key: string | null;
+  type: string;
+  download_count: number;
+  status: string;
+  has_stems: boolean;
+  stems_count: number;
+  created_at: string;
+}
+
+/** Sample shape for SamplesTab (pack as object, camelCase). */
+export interface AdminSample {
+  id: string;
+  name: string;
+  pack: { id: string; name: string };
+  creator: string;
+  genre: string;
+  bpm: number | null;
+  key: string | null;
+  type: "Loop" | "One-shot";
+  downloads: number;
+  status: "Active" | "Disabled";
+  hasStems: boolean;
+  stemsCount?: number;
+  createdAt: string;
+}
+
+async function fetchAllSamplesForAdmin(): Promise<AdminSample[]> {
+  const { data, error } = await supabase.rpc("get_all_samples_for_admin");
+  if (error) throw error;
+  const rows = (data ?? []) as AdminSampleRow[];
+  return rows.map((row) => ({
+    id: row.id,
+    name: row.name,
+    pack: { id: row.pack_id, name: row.pack_name },
+    creator: row.creator_name,
+    genre: row.genre,
+    bpm: row.bpm,
+    key: row.key,
+    type: row.type as "Loop" | "One-shot",
+    downloads: row.download_count,
+    status: row.status as "Active" | "Disabled",
+    hasStems: row.has_stems,
+    stemsCount: row.stems_count,
+    createdAt: row.created_at,
+  }));
+}
+
+export function useAllSamples() {
+  const { data, error, isLoading, mutate } = useSWR<AdminSample[]>(
+    "admin-all-samples",
+    fetchAllSamplesForAdmin,
+    {
+      dedupingInterval: 60000,
+      keepPreviousData: true,
+      revalidateOnMount: true,
+    }
+  );
+  return { samples: data ?? [], isLoading, isError: error, refresh: mutate };
+}
+
 export function useAPI<T>(key: string | null, fetcher: () => Promise<T>) {
   const { data, error, isLoading, mutate } = useSWR<T>(
     key,

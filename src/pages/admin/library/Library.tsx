@@ -6,6 +6,7 @@ import { SamplesTab } from "@/components/library/SamplesTab";
 import { GenresTab } from "@/components/library/GenresTab";
 import { CategoriesTab } from "@/components/library/CategoriesTab";
 import { MoodsTab } from "@/components/library/MoodsTab";
+import { useAllSamples } from "@/hooks/useAdminData";
 
 type LibraryTab = "packs" | "samples" | "genres" | "categories" | "moods";
 
@@ -125,158 +126,18 @@ const uniqueGenres = Array.from(new Set(mockPacks.map(p => p.genre)));
 const uniqueCategories = Array.from(new Set(mockPacks.map(p => p.category)));
 const uniqueTags = Array.from(new Set(mockPacks.flatMap(p => p.tags)));
 
-// Mock data for samples - replace with real API data
-// IMPORTANT: Every sample MUST have a pack - no orphaned samples allowed
-const mockSamples = [
-  {
-    id: 1,
-    name: "808 Bass Hit",
-    pack: { id: 1, name: "Trap Essentials Vol.1" },
-    creator: "Producer Mike",
-    genre: "Trap",
-    bpm: 140,
-    key: "C",
-    type: "One-shot" as const,
-    downloads: 1240,
-    status: "Active" as const,
-    hasStems: false,
-    stemsCount: 0,
-    createdAt: "2024-01-15",
-  },
-  {
-    id: 2,
-    name: "Snare Clap",
-    pack: { id: 2, name: "Lo-Fi Hip Hop Bundle" },
-    creator: "Beat Master",
-    genre: "Lo-Fi",
-    bpm: null,
-    key: null,
-    type: "One-shot" as const,
-    downloads: 980,
-    status: "Active" as const,
-    hasStems: false,
-    stemsCount: 0,
-    createdAt: "2024-01-20",
-  },
-  {
-    id: 3,
-    name: "Hi-Hat Loop",
-    pack: { id: 3, name: "EDM Starter Kit" },
-    creator: "Rhythm King",
-    genre: "EDM",
-    bpm: 128,
-    key: "Am",
-    type: "Loop" as const,
-    downloads: 856,
-    status: "Active" as const,
-    hasStems: true,
-    stemsCount: 2,
-    createdAt: "2024-02-01",
-  },
-  {
-    id: 4,
-    name: "Synth Lead",
-    pack: { id: 1, name: "Trap Essentials Vol.1" },
-    creator: "Producer Mike",
-    genre: "Trap",
-    bpm: 140,
-    key: "F#",
-    type: "Loop" as const,
-    downloads: 743,
-    status: "Disabled" as const,
-    hasStems: true,
-    stemsCount: 4,
-    createdAt: "2024-01-16",
-  },
-  {
-    id: 5,
-    name: "Kick Drum",
-    pack: { id: 4, name: "House Drums Pack" },
-    creator: "DJ Flow",
-    genre: "House",
-    bpm: null,
-    key: null,
-    type: "One-shot" as const,
-    downloads: 621,
-    status: "Active" as const,
-    hasStems: false,
-    stemsCount: 0,
-    createdAt: "2024-01-28",
-  },
-  {
-    id: 6,
-    name: "Vocal Chop Loop",
-    pack: { id: 5, name: "Vocal Chops Collection" },
-    creator: "Sound Wave",
-    genre: "Hip Hop",
-    bpm: 120,
-    key: "D",
-    type: "Loop" as const,
-    downloads: 543,
-    status: "Active" as const,
-    hasStems: true,
-    stemsCount: 3,
-    createdAt: "2024-01-10",
-  },
-  {
-    id: 7,
-    name: "Piano Loop",
-    pack: { id: 2, name: "Lo-Fi Hip Hop Bundle" },
-    creator: "Beat Master",
-    genre: "Lo-Fi",
-    bpm: 85,
-    key: "Gm",
-    type: "Loop" as const,
-    downloads: 487,
-    status: "Active" as const,
-    hasStems: false,
-    stemsCount: 0,
-    createdAt: "2024-01-21",
-  },
-  {
-    id: 8,
-    name: "Crash Cymbal",
-    pack: { id: 4, name: "House Drums Pack" },
-    creator: "DJ Flow",
-    genre: "House",
-    bpm: null,
-    key: null,
-    type: "One-shot" as const,
-    downloads: 392,
-    status: "Disabled" as const,
-    hasStems: false,
-    stemsCount: 0,
-    createdAt: "2024-01-29",
-  },
-  // Example: Sample from single-sample pack (Pack-First Architecture)
-  {
-    id: 9,
-    name: "Heavy Kick.wav",
-    pack: { id: 7, name: "Heavy Kick Premium" },  // Single-sample pack
-    creator: "Sound Wave",
-    genre: "Trap",
-    bpm: 140,
-    key: "C",
-    type: "One-shot" as const,
-    downloads: 156,
-    status: "Active" as const,
-    hasStems: false,
-    stemsCount: 0,
-    createdAt: "2024-02-05",
-  },
-];
-
-// Extract unique values for sample filters
-const uniqueSampleTypes = Array.from(new Set(mockSamples.map(s => s.type)));
-const uniqueSamplePacks = Array.from(new Set(mockSamples.map(s => s.pack.name)));
-const uniqueSampleCreators = Array.from(new Set(mockSamples.map(s => s.creator)));
-const uniqueSampleGenres = Array.from(new Set(mockSamples.map(s => s.genre)));
-const uniqueSampleKeys = Array.from(new Set(mockSamples.filter(s => s.key !== null).map(s => s.key as string)));
-
 export default function LibraryPage() {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const tab = (searchParams.get("tab") as LibraryTab) || "packs";
+  const { samples: allSamples, isLoading: samplesLoading, isError: samplesError } = useAllSamples();
+
+  // Derive unique values for sample filters from API data
+  const uniqueSampleTypes = Array.from(new Set(allSamples.map((s) => s.type)));
+  const uniqueSamplePacks = Array.from(new Set(allSamples.map((s) => s.pack.name)));
+  const uniqueSampleCreators = Array.from(new Set(allSamples.map((s) => s.creator)));
+  const uniqueSampleGenres = Array.from(new Set(allSamples.map((s) => s.genre)));
+  const uniqueSampleKeys = Array.from(new Set(allSamples.filter((s) => s.key != null).map((s) => s.key!)));
 
   const handleTabChange = (value: string) => {
     navigate(`/admin/library?tab=${value}`);
@@ -323,12 +184,14 @@ export default function LibraryPage() {
         {/* Samples Tab */}
         <TabsContent value="samples" className="space-y-4">
           <SamplesTab
-            samples={mockSamples}
+            samples={allSamples}
             uniqueTypes={uniqueSampleTypes}
             uniquePacks={uniqueSamplePacks}
             uniqueCreators={uniqueSampleCreators}
             uniqueGenres={uniqueSampleGenres}
             uniqueKeys={uniqueSampleKeys}
+            isLoading={samplesLoading}
+            isError={samplesError}
           />
         </TabsContent>
 
