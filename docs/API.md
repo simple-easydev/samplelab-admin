@@ -79,6 +79,7 @@ Returns all samples with pack, creator, genre, and stem count. For admin library
 | stems_count | bigint | Number of stem files |
 | created_at | timestamptz | Created at |
 | metadata | jsonb | Optional: `{ "bars": number[], "duration_seconds": number }` for waveform |
+| thumbnail_url | text | Optional URL to sample thumbnail image (nullable) |
 
 **Example**
 
