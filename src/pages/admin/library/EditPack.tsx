@@ -51,6 +51,7 @@ import {
   getCategories,
   type AudioUploadResult,
 } from "@/lib/audio-upload";
+import { extractAudioMetadata } from "@/lib/audio-metadata";
 import { supabase } from "@/lib/supabase";
 
 interface Creator {
@@ -571,6 +572,17 @@ export default function EditPackPage() {
             throw new Error(`Failed to upload ${sample.name}: ${audioResult.error}`);
           }
 
+          // Extract BPM and Key from file metadata (server-side)
+          let extractedBpm: number | null = null;
+          let extractedKey: string | null = null;
+          try {
+            const metadata = await extractAudioMetadata(audioResult.url!);
+            extractedBpm = metadata.bpm;
+            extractedKey = metadata.key;
+          } catch {
+            // Non-blocking: use form values if extraction fails
+          }
+
           // Upload stems if present
           let stemResults: AudioUploadResult[] = [];
           if (sample.hasStems && sample.stemFiles.length > 0) {
@@ -581,15 +593,18 @@ export default function EditPackPage() {
             }
           }
 
-          // Insert sample into database
+          // Insert sample into database (prefer extracted BPM/Key, fall back to form values)
+          const bpm = extractedBpm ?? (sample.bpm ? parseInt(sample.bpm) : null);
+          const key = (extractedKey || sample.key || null) as string | null;
+
           const { data: sampleData, error: sampleError } = await supabase
             .from("samples")
             .insert({
               pack_id: id,
               name: sample.name,
               audio_url: audioResult.url!,
-              bpm: sample.bpm ? parseInt(sample.bpm) : null,
-              key: sample.key || null,
+              bpm,
+              key,
               type: sample.type,
               length: sample.length || null,
               file_size_bytes: sample.file.size,
