@@ -114,52 +114,33 @@ export function GenresTab() {
       setIsLoading(true);
       setError(null);
 
-      // Fetch all genres
-      const { data: genresData, error: genresError } = await supabase
-        .from("genres")
-        .select("*")
-        .order("name", { ascending: true });
+      const { data, error: rpcError } = await supabase.rpc("get_all_genres_for_admin");
+      if (rpcError) throw rpcError;
 
-      if (genresError) throw genresError;
+      const rows = (data ?? []) as Array<{
+        id: string;
+        name: string;
+        description: string | null;
+        is_active: boolean;
+        created_at: string;
+        packs_count: number;
+        samples_count: number;
+      }>;
 
-      // For each genre, count packs and samples
-      const genresWithCounts = await Promise.all(
-        (genresData || []).map(async (genre) => {
-          // Count packs using this genre
-          const { count: packsCount } = await supabase
-            .from("pack_genres")
-            .select("*", { count: "exact", head: true })
-            .eq("genre_id", genre.id);
-
-          // Count samples in packs that use this genre
-          const { data: packIds } = await supabase
-            .from("pack_genres")
-            .select("pack_id")
-            .eq("genre_id", genre.id);
-
-          let samplesCount = 0;
-          if (packIds && packIds.length > 0) {
-            const { count } = await supabase
-              .from("samples")
-              .select("*", { count: "exact", head: true })
-              .in("pack_id", packIds.map((p) => p.pack_id))
-              .in("status", ["Active", "Disabled"]); // Exclude deleted samples
-
-            samplesCount = count || 0;
-          }
-
-          return {
-            ...genre,
-            packs_count: packsCount || 0,
-            samples_count: samplesCount,
-          };
-        })
+      setGenres(
+        rows.map((row) => ({
+          id: row.id,
+          name: row.name,
+          description: row.description,
+          is_active: row.is_active,
+          created_at: row.created_at,
+          packs_count: Number(row.packs_count),
+          samples_count: Number(row.samples_count),
+        }))
       );
-
-      setGenres(genresWithCounts);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error("Error fetching genres:", err);
-      setError("Failed to load genres: " + err.message);
+      setError("Failed to load genres: " + (err instanceof Error ? err.message : String(err)));
     } finally {
       setIsLoading(false);
     }
