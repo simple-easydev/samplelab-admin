@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import {
   ArrowLeft,
@@ -7,9 +7,6 @@ import {
   Ban,
   Check,
   Trash2,
-  Play,
-  Pause,
-  Volume2,
   Loader2,
   AlertCircle,
   Calendar,
@@ -70,7 +67,6 @@ interface PackDetail {
   samples_count: number;
   sample_types: string[]; // Types found in this pack (Loop, One-shot)
   has_stems: boolean; // Does any sample have stems?
-  preview_sample_url: string | null; // First sample audio URL for preview
 }
 
 export default function PackDetail() {
@@ -90,13 +86,6 @@ export default function PackDetail() {
   const [deleteConfirmText, setDeleteConfirmText] = useState("");
   const [actionError, setActionError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
-
-  // Audio player state
-  const [isPlaying, setIsPlaying] = useState(false);
-  const [duration, setDuration] = useState(0);
-  const [currentTime, setCurrentTime] = useState(0);
-  const [volume, setVolume] = useState(0.7);
-  const audioRef = useRef<HTMLAudioElement | null>(null);
 
   // Fetch pack details
   useEffect(() => {
@@ -167,9 +156,6 @@ export default function PackDetail() {
         );
         const hasStems = samplesData?.some((s: any) => s.has_stems) || false;
 
-        // Get first sample audio URL for preview
-        const previewSampleUrl = samplesData?.[0]?.audio_url || null;
-
         const packDetail: PackDetail = {
           id: packData.id,
           name: packData.name,
@@ -189,7 +175,6 @@ export default function PackDetail() {
           samples_count: samplesData?.length || 0,
           sample_types: sampleTypes,
           has_stems: hasStems,
-          preview_sample_url: previewSampleUrl,
         };
 
         setPack(packDetail);
@@ -203,60 +188,6 @@ export default function PackDetail() {
 
     fetchPackDetail();
   }, [id]);
-
-  // Audio player setup
-  useEffect(() => {
-    if (!pack?.preview_sample_url) return;
-
-    const audio = new Audio(pack.preview_sample_url);
-    audioRef.current = audio;
-
-    audio.addEventListener("loadedmetadata", () => {
-      setDuration(audio.duration);
-    });
-
-    audio.addEventListener("timeupdate", () => {
-      setCurrentTime(audio.currentTime);
-    });
-
-    audio.addEventListener("ended", () => {
-      setIsPlaying(false);
-      setCurrentTime(0);
-    });
-
-    audio.volume = volume;
-
-    return () => {
-      audio.pause();
-      audio.removeEventListener("loadedmetadata", () => {});
-      audio.removeEventListener("timeupdate", () => {});
-      audio.removeEventListener("ended", () => {});
-    };
-  }, [pack?.preview_sample_url]);
-
-  // Handle volume change
-  useEffect(() => {
-    if (audioRef.current) {
-      audioRef.current.volume = volume;
-    }
-  }, [volume]);
-
-  const togglePlayPause = () => {
-    if (!audioRef.current) return;
-
-    if (isPlaying) {
-      audioRef.current.pause();
-    } else {
-      audioRef.current.play();
-    }
-    setIsPlaying(!isPlaying);
-  };
-
-  const formatTime = (seconds: number) => {
-    const mins = Math.floor(seconds / 60);
-    const secs = Math.floor(seconds % 60);
-    return `${mins}:${secs.toString().padStart(2, "0")}`;
-  };
 
   const confirmDisablePack = async () => {
     if (!pack || !id) return;
@@ -636,62 +567,6 @@ export default function PackDetail() {
               </div>
             </CardContent>
           </Card>
-
-          {/* Pack Preview Player */}
-          {pack.preview_sample_url && (
-            <Card>
-              <CardHeader>
-                <CardTitle>Pack Preview</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="flex items-center gap-4 p-4 bg-muted rounded-lg">
-                  <Button
-                    size="icon"
-                    variant="outline"
-                    onClick={togglePlayPause}
-                    className="h-10 w-10"
-                  >
-                    {isPlaying ? (
-                      <Pause className="h-4 w-4" />
-                    ) : (
-                      <Play className="h-4 w-4" />
-                    )}
-                  </Button>
-
-                  <div className="flex-1 space-y-1">
-                    <div className="flex justify-between text-xs text-muted-foreground">
-                      <span>{formatTime(currentTime)}</span>
-                      <span>{formatTime(duration)}</span>
-                    </div>
-                    <div className="h-2 bg-muted-foreground/20 rounded-full overflow-hidden">
-                      <div
-                        className="h-full bg-primary transition-all"
-                        style={{
-                          width: `${(currentTime / duration) * 100 || 0}%`,
-                        }}
-                      />
-                    </div>
-                  </div>
-
-                  <div className="flex items-center gap-2">
-                    <Volume2 className="h-4 w-4 text-muted-foreground" />
-                    <input
-                      type="range"
-                      min="0"
-                      max="1"
-                      step="0.01"
-                      value={volume}
-                      onChange={(e) => setVolume(parseFloat(e.target.value))}
-                      className="w-20"
-                    />
-                  </div>
-                </div>
-                <p className="text-xs text-muted-foreground mt-2">
-                  Preview: First sample from this pack
-                </p>
-              </CardContent>
-            </Card>
-          )}
         </div>
 
         {/* Right Column - Metadata & Analytics */}
@@ -809,22 +684,6 @@ export default function PackDetail() {
           {/* CTA Section */}
           <Card>
             <CardContent className="pt-6 space-y-3">
-              {pack.preview_sample_url && (
-                <Button className="w-full" onClick={togglePlayPause}>
-                  {isPlaying ? (
-                    <>
-                      <Pause className="h-4 w-4 mr-2" />
-                      Pause Preview
-                    </>
-                  ) : (
-                    <>
-                      <Play className="h-4 w-4 mr-2" />
-                      Play Preview
-                    </>
-                  )}
-                </Button>
-              )}
-
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button variant="outline" className="w-full">
