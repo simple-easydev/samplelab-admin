@@ -99,18 +99,20 @@ export function MoodsTab() {
       setIsLoading(true);
       setError(null);
 
-      // Fetch all moods
-      const { data: moodsData, error: moodsError } = await supabase
-        .from("moods")
-        .select("*")
-        .order("name", { ascending: true });
+      const { data, error: rpcError } = await supabase.rpc("get_all_moods");
+      if (rpcError) throw rpcError;
 
-      if (moodsError) throw moodsError;
+      const rows = (data ?? []) as Array<{
+        id: string;
+        name: string;
+        is_active: boolean;
+        created_at: string;
+      }>;
 
-      setMoods(moodsData || []);
-    } catch (err: any) {
+      setMoods(rows);
+    } catch (err: unknown) {
       console.error("Error fetching moods:", err);
-      setError("Failed to load moods: " + err.message);
+      setError("Failed to load moods: " + (err instanceof Error ? err.message : String(err)));
     } finally {
       setIsLoading(false);
     }

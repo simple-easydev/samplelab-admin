@@ -1,7 +1,5 @@
--- RPC: Return all samples for admin library (Samples tab).
--- Each row includes pack name, creator name, first pack genre, and stem count.
--- Frontend: supabase.rpc('get_all_samples')
--- RLS: runs as invoker; admins see all samples, others see nothing (no public policy on this RPC).
+-- Rename get_all_samples_for_admin to get_all_samples (for DBs that already ran the previous migration).
+DROP FUNCTION IF EXISTS public.get_all_samples_for_admin();
 
 CREATE OR REPLACE FUNCTION public.get_all_samples()
 RETURNS TABLE (

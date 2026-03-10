@@ -113,34 +113,31 @@ export function CategoriesTab() {
       setIsLoading(true);
       setError(null);
 
-      // Fetch all categories
-      const { data: categoriesData, error: categoriesError } = await supabase
-        .from("categories")
-        .select("*")
-        .order("name", { ascending: true });
+      const { data, error: rpcError } = await supabase.rpc("get_all_categories");
+      if (rpcError) throw rpcError;
 
-      if (categoriesError) throw categoriesError;
+      const rows = (data ?? []) as Array<{
+        id: string;
+        name: string;
+        description: string | null;
+        is_active: boolean;
+        created_at: string;
+        packs_count: number;
+      }>;
 
-      // For each category, count packs
-      const categoriesWithCounts = await Promise.all(
-        (categoriesData || []).map(async (category) => {
-          // Count packs using this category
-          const { count: packsCount } = await supabase
-            .from("packs")
-            .select("*", { count: "exact", head: true })
-            .eq("category_id", category.id);
-
-          return {
-            ...category,
-            packs_count: packsCount || 0,
-          };
-        })
+      setCategories(
+        rows.map((row) => ({
+          id: row.id,
+          name: row.name,
+          description: row.description,
+          is_active: row.is_active,
+          created_at: row.created_at,
+          packs_count: Number(row.packs_count),
+        }))
       );
-
-      setCategories(categoriesWithCounts);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error("Error fetching categories:", err);
-      setError("Failed to load categories: " + err.message);
+      setError("Failed to load categories: " + (err instanceof Error ? err.message : String(err)));
     } finally {
       setIsLoading(false);
     }

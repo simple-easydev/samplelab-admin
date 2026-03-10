@@ -130,7 +130,7 @@ export function useCustomers() {
   return { customers: data?.customers ?? [], isLoading, isError: error, refresh: mutate };
 }
 
-/** Shape returned by get_all_samples_for_admin RPC (one row per sample). */
+/** Shape returned by get_all_samples RPC (one row per sample). */
 export interface AdminSampleRow {
   id: string;
   name: string;
@@ -166,7 +166,7 @@ export interface AdminSample {
 }
 
 async function fetchAllSamplesForAdmin(): Promise<AdminSample[]> {
-  const { data, error } = await supabase.rpc("get_all_samples_for_admin");
+  const { data, error } = await supabase.rpc("get_all_samples");
   if (error) throw error;
   const rows = (data ?? []) as AdminSampleRow[];
   return rows.map((row) => ({

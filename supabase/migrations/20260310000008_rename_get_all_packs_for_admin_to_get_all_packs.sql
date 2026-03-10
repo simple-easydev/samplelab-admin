@@ -1,6 +1,5 @@
--- RPC: Return all packs for admin library (Packs tab) with creator, category, genres, and sample count.
--- Frontend: supabase.rpc('get_all_packs')
--- RLS: runs as invoker; admins see all packs.
+-- Rename get_all_packs_for_admin to get_all_packs (for DBs that already ran the previous migration).
+DROP FUNCTION IF EXISTS public.get_all_packs_for_admin();
 
 CREATE OR REPLACE FUNCTION public.get_all_packs()
 RETURNS TABLE (

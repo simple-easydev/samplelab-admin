@@ -114,7 +114,7 @@ export function GenresTab() {
       setIsLoading(true);
       setError(null);
 
-      const { data, error: rpcError } = await supabase.rpc("get_all_genres_for_admin");
+      const { data, error: rpcError } = await supabase.rpc("get_all_genres");
       if (rpcError) throw rpcError;
 
       const rows = (data ?? []) as Array<{

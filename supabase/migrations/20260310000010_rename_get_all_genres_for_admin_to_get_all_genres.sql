@@ -1,6 +1,5 @@
--- RPC: Return all genres for admin library (Genres tab) with pack and sample counts.
--- Frontend: supabase.rpc('get_all_genres')
--- RLS: runs as invoker; admins see all genres.
+-- Rename get_all_genres_for_admin to get_all_genres (for DBs that already ran the previous migration).
+DROP FUNCTION IF EXISTS public.get_all_genres_for_admin();
 
 CREATE OR REPLACE FUNCTION public.get_all_genres()
 RETURNS TABLE (
