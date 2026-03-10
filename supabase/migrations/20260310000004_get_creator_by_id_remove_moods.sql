@@ -1,8 +1,5 @@
--- RPC: Return one active creator by id with full detail (description, tags, genres, packs, samples, similar creators).
--- Returns single JSONB: null if creator not found or inactive; otherwise one object with nested arrays.
--- Frontend: supabase.rpc('get_creator_by_id', { p_creator_id: '<uuid>' })
--- Drop existing function first (return type changed from TABLE to jsonb).
-DROP FUNCTION IF EXISTS public.get_creator_by_id(uuid);
+-- Remove moods from get_creator_by_id response (no longer fetch or return moods).
+-- Run this after 20260310000003 has been applied.
 
 CREATE OR REPLACE FUNCTION public.get_creator_by_id(p_creator_id uuid)
 RETURNS jsonb
@@ -23,7 +20,6 @@ DECLARE
   v_similar_creators jsonb;
   v_result jsonb;
 BEGIN
-  -- Load creator; exit with null if missing or inactive
   SELECT * INTO v_creator
   FROM creators c
   WHERE c.id = p_creator_id AND COALESCE(c.is_active, true) = true;
@@ -32,14 +28,12 @@ BEGIN
     RETURN NULL;
   END IF;
 
-  -- Counts (same rules as get_creators_with_counts: all packs, all samples)
   SELECT COUNT(*) INTO v_packs_count FROM packs WHERE creator_id = p_creator_id;
   SELECT COUNT(*) INTO v_samples_count
     FROM samples s
     JOIN packs p ON p.id = s.pack_id
     WHERE p.creator_id = p_creator_id;
 
-  -- Distinct tags from all packs of this creator
   SELECT COALESCE(array_agg(x.t ORDER BY x.t), ARRAY[]::text[])
   INTO v_tags
   FROM (
@@ -48,7 +42,6 @@ BEGIN
     WHERE packs.creator_id = p_creator_id
   ) x;
 
-  -- Distinct genres (id, name) from pack_genres for this creator's packs
   SELECT COALESCE(jsonb_agg(jsonb_build_object('id', g.id, 'name', g.name)) FILTER (WHERE g.id IS NOT NULL), '[]'::jsonb)
   INTO v_genres
   FROM (SELECT DISTINCT g2.id, g2.name
@@ -57,7 +50,6 @@ BEGIN
         JOIN packs p ON p.id = pg.pack_id
         WHERE p.creator_id = p_creator_id AND COALESCE(g2.is_active, true) = true) g;
 
-  -- Distinct categories (id, name) from packs of this creator
   SELECT COALESCE(jsonb_agg(jsonb_build_object('id', cat.id, 'name', cat.name)) FILTER (WHERE cat.id IS NOT NULL), '[]'::jsonb)
   INTO v_categories
   FROM (SELECT DISTINCT c2.id, c2.name
@@ -65,7 +57,6 @@ BEGIN
         JOIN categories c2 ON c2.id = p.category_id
         WHERE p.creator_id = p_creator_id AND COALESCE(c2.is_active, true) = true) cat;
 
-  -- All packs for this creator (same fields as table)
   SELECT COALESCE(jsonb_agg(to_jsonb(p) ORDER BY p.updated_at DESC NULLS LAST, p.id), '[]'::jsonb)
   INTO v_packs
   FROM (
@@ -75,7 +66,6 @@ BEGIN
     WHERE creator_id = p_creator_id
   ) p;
 
-  -- All samples for this creator's packs
   SELECT COALESCE(jsonb_agg(to_jsonb(s) ORDER BY s.pack_id, s.name, s.id), '[]'::jsonb)
   INTO v_samples
   FROM (
@@ -87,7 +77,6 @@ BEGIN
     WHERE p.creator_id = p_creator_id
   ) s;
 
-  -- Similar creators: share at least one genre with this creator's packs, exclude self, limit 6
   SELECT COALESCE(jsonb_agg(sc), '[]'::jsonb)
   INTO v_similar_creators
   FROM (
@@ -131,7 +120,3 @@ $$;
 
 COMMENT ON FUNCTION public.get_creator_by_id(uuid) IS
   'Returns one JSONB object for the active creator: id, name, description (bio), avatar_url, packs_count, samples_count, tags[], genres[], categories[], packs[], samples[], similar_creators[]. Returns null if not found or inactive.';
-
-GRANT EXECUTE ON FUNCTION public.get_creator_by_id(uuid) TO anon;
-GRANT EXECUTE ON FUNCTION public.get_creator_by_id(uuid) TO authenticated;
-GRANT EXECUTE ON FUNCTION public.get_creator_by_id(uuid) TO service_role;
