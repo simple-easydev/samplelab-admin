@@ -46,6 +46,7 @@ import {
   uploadAudioFile,
   uploadPackCover,
   uploadMultipleAudioFiles,
+  uploadSampleThumbnail,
   getCreators,
   getGenres,
   getCategories,
@@ -72,6 +73,7 @@ interface ExistingSample {
   id: string;
   name: string;
   audio_url: string;
+  thumbnail_url: string | null;
   bpm: number | null;
   key: string | null;
   type: "Loop" | "One-shot";
@@ -95,6 +97,7 @@ interface NewSampleFile {
   creditCost: string;
   hasStems: boolean;
   stemFiles: File[];
+  thumbnailFile: File | null;
 }
 
 export default function EditPackPage() {
@@ -124,7 +127,7 @@ export default function EditPackPage() {
   const [existingSamples, setExistingSamples] = useState<ExistingSample[]>([]);
   const [samplesToDelete, setSamplesToDelete] = useState<string[]>([]);
 
-  // New samples to add
+  // New samples to add (NewSampleFile must match NewSamplesSection interface)
   const [newSampleFiles, setNewSampleFiles] = useState<NewSampleFile[]>([]);
   // Waveform data (bars + duration) per new sample id, for saving to samples.metadata
   const [newSampleWaveformMeta, setNewSampleWaveformMeta] = useState<
@@ -322,6 +325,7 @@ export default function EditPackPage() {
       creditCost: "",
       hasStems: false,
       stemFiles: [],
+      thumbnailFile: null,
     }));
 
     setNewSampleFiles((prev) => [...prev, ...newSamples]);
@@ -607,6 +611,15 @@ export default function EditPackPage() {
             }
           }
 
+          // Upload thumbnail if present
+          let thumbnailUrl: string | null = null;
+          if (sample.thumbnailFile) {
+            const thumbResult = await uploadSampleThumbnail(sample.thumbnailFile);
+            if (thumbResult.success && thumbResult.url) {
+              thumbnailUrl = thumbResult.url;
+            }
+          }
+
           // Build metadata from waveform (bars + duration) when available
           const waveformMeta = newSampleWaveformMeta[sample.id];
           const metadata =
@@ -633,6 +646,7 @@ export default function EditPackPage() {
               has_stems: sample.hasStems,
               status: "Active",
               metadata,
+              thumbnail_url: thumbnailUrl,
             })
             .select()
             .single();
@@ -1024,17 +1038,39 @@ export default function EditPackPage() {
                 >
                   <div className="flex items-start justify-between mb-3">
                     <div className="flex items-center gap-3">
-                      <Button
-                        variant="outline"
-                        size="icon"
+                      <button
+                        type="button"
                         onClick={() => togglePlaySample(sample.id, sample.audio_url)}
+                        aria-label={playingSampleId === sample.id ? "Pause" : "Play"}
+                        className={`relative shrink-0 rounded-md overflow-hidden border flex items-center justify-center bg-muted ${
+                          sample.thumbnail_url ? "h-12 w-12" : "h-9 w-9 border-input"
+                        }`}
                       >
-                        {playingSampleId === sample.id ? (
-                          <Pause className="h-4 w-4" />
+                        {sample.thumbnail_url ? (
+                          <>
+                            <img
+                              src={sample.thumbnail_url}
+                              alt=""
+                              className="absolute inset-0 w-full h-full object-cover"
+                            />
+                            <span className="relative z-10 flex items-center justify-center w-full h-full bg-black/30 text-white">
+                              {playingSampleId === sample.id ? (
+                                <Pause className="h-5 w-5" />
+                              ) : (
+                                <Play className="h-5 w-5 ml-0.5" />
+                              )}
+                            </span>
+                          </>
                         ) : (
-                          <Play className="h-4 w-4" />
+                          <>
+                            {playingSampleId === sample.id ? (
+                              <Pause className="h-4 w-4" />
+                            ) : (
+                              <Play className="h-4 w-4" />
+                            )}
+                          </>
                         )}
-                      </Button>
+                      </button>
                       <div>
                         <p className="font-medium">{sample.name}</p>
                         <p className="text-xs text-muted-foreground">

@@ -233,6 +233,64 @@ export async function uploadPackCover(file: File): Promise<AudioUploadResult> {
 }
 
 /**
+ * Upload a sample thumbnail image (uses pack-covers bucket with sample-thumbnails/ path)
+ * @param file The image file
+ * @returns Upload result with URL or error
+ */
+export async function uploadSampleThumbnail(file: File): Promise<AudioUploadResult> {
+  try {
+    const validTypes = ["image/jpeg", "image/jpg", "image/png", "image/webp"];
+    if (!validTypes.includes(file.type)) {
+      return {
+        success: false,
+        error: "Invalid file type. Only JPG, PNG, and WebP images are allowed.",
+      };
+    }
+    const maxSize = 2 * 1024 * 1024; // 2MB
+    if (file.size > maxSize) {
+      return {
+        success: false,
+        error: "Image size must be less than 2MB.",
+      };
+    }
+    const timestamp = Date.now();
+    const randomString = Math.random().toString(36).substring(2, 15);
+    const fileExt = file.name.split(".").pop();
+    const fileName = `${timestamp}-${randomString}.${fileExt}`;
+    const filePath = `sample-thumbnails/${fileName}`;
+
+    const { error } = await supabase.storage
+      .from("pack-covers")
+      .upload(filePath, file, {
+        cacheControl: "3600",
+        upsert: false,
+      });
+
+    if (error) {
+      return {
+        success: false,
+        error: `Upload failed: ${error.message}`,
+      };
+    }
+
+    const { data: urlData } = supabase.storage
+      .from("pack-covers")
+      .getPublicUrl(filePath);
+
+    return {
+      success: true,
+      url: urlData.publicUrl,
+      path: filePath,
+    };
+  } catch (error) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Unknown error occurred",
+    };
+  }
+}
+
+/**
  * Upload a genre thumbnail image (uses pack-covers bucket with genres/ path)
  * @param file The image file
  * @returns Upload result with URL or error

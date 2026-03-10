@@ -1,0 +1,69 @@
+-- Add thumbnail_url to get_all_samples response
+DROP FUNCTION IF EXISTS public.get_all_samples();
+
+CREATE OR REPLACE FUNCTION public.get_all_samples()
+RETURNS TABLE (
+  id uuid,
+  name text,
+  audio_url text,
+  pack_id uuid,
+  pack_name text,
+  creator_name text,
+  genre text,
+  bpm integer,
+  key text,
+  type text,
+  download_count integer,
+  status text,
+  has_stems boolean,
+  stems_count bigint,
+  created_at timestamptz,
+  metadata jsonb,
+  thumbnail_url text
+)
+LANGUAGE sql
+STABLE
+SECURITY INVOKER
+SET search_path = public
+AS $$
+  SELECT
+    s.id,
+    s.name,
+    s.audio_url,
+    p.id AS pack_id,
+    p.name AS pack_name,
+    COALESCE(cr.name, '')::text AS creator_name,
+    COALESCE(
+      (SELECT g.name
+       FROM pack_genres pg
+       JOIN genres g ON g.id = pg.genre_id
+       WHERE pg.pack_id = s.pack_id AND COALESCE(g.is_active, true) = true
+       LIMIT 1),
+      ''
+    )::text AS genre,
+    s.bpm,
+    s.key,
+    s.type,
+    COALESCE(s.download_count, 0)::integer AS download_count,
+    s.status,
+    COALESCE(s.has_stems, false) AS has_stems,
+    COALESCE(st.stem_count, 0)::bigint AS stems_count,
+    s.created_at,
+    s.metadata,
+    s.thumbnail_url
+  FROM samples s
+  JOIN packs p ON p.id = s.pack_id
+  LEFT JOIN creators cr ON cr.id = p.creator_id
+  LEFT JOIN (
+    SELECT sample_id, COUNT(*) AS stem_count
+    FROM stems
+    GROUP BY sample_id
+  ) st ON st.sample_id = s.id
+  ORDER BY s.created_at DESC NULLS LAST, s.name ASC;
+$$;
+
+COMMENT ON FUNCTION public.get_all_samples() IS
+  'Returns one row per sample with pack, creator, genre, stem count, audio_url, metadata, and thumbnail_url. For admin library Samples tab.';
+
+GRANT EXECUTE ON FUNCTION public.get_all_samples() TO authenticated;
+GRANT EXECUTE ON FUNCTION public.get_all_samples() TO service_role;

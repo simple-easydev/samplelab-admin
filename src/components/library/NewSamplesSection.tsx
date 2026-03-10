@@ -15,7 +15,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useEffect, useRef, useState } from "react";
-import { FileAudio, Loader2, Pause, Play, X } from "lucide-react";
+import { FileAudio, ImagePlus, Loader2, Pause, Play, X } from "lucide-react";
 import { useWaveform } from "@/hooks/useWaveform";
 import { WaveformBars } from "@/components/library/WaveformBars";
 
@@ -30,6 +30,7 @@ interface NewSampleFile {
   creditCost: string;
   hasStems: boolean;
   stemFiles: File[];
+  thumbnailFile: File | null;
 }
 
 interface NewSamplesSectionProps {
@@ -88,25 +89,56 @@ function NewSampleRow({
     }
   }, [waveform, sample.id, onWaveformReady]);
 
+  // Thumbnail preview URL (create/revoke from thumbnailFile)
+  const [thumbPreview, setThumbPreview] = useState<string | null>(null);
+  useEffect(() => {
+    if (sample.thumbnailFile) {
+      const url = URL.createObjectURL(sample.thumbnailFile);
+      setThumbPreview(url);
+      return () => URL.revokeObjectURL(url);
+    } else {
+      setThumbPreview(null);
+    }
+  }, [sample.thumbnailFile]);
+
   return (
     <div className="p-4 border rounded-lg space-y-3">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <Button
+          <button
             type="button"
-            variant="outline"
-            size="icon"
-            className="h-9 w-9 shrink-0"
             onClick={() => onPlayPause(sample.id, sample.file)}
             disabled={isSubmitting}
             aria-label={isPlaying ? "Pause" : "Play"}
+            className={`relative shrink-0 rounded-md overflow-hidden border flex items-center justify-center bg-muted ${
+              thumbPreview ? "h-12 w-12" : "h-9 w-9 border-input"
+            }`}
           >
-            {isPlaying ? (
-              <Pause className="h-4 w-4" />
+            {thumbPreview ? (
+              <>
+                <img
+                  src={thumbPreview}
+                  alt=""
+                  className="absolute inset-0 w-full h-full object-cover"
+                />
+                <span className="relative z-10 flex items-center justify-center w-full h-full bg-black/30 text-white">
+                  {isPlaying ? (
+                    <Pause className="h-5 w-5" />
+                  ) : (
+                    <Play className="h-5 w-5 ml-0.5" />
+                  )}
+                </span>
+              </>
             ) : (
-              <Play className="h-4 w-4" />
+              <>
+                {isPlaying ? (
+                  <Pause className="h-4 w-4" />
+                ) : (
+                  <Play className="h-4 w-4" />
+                )}
+              </>
             )}
-          </Button>
+          </button>
           <FileAudio className="h-5 w-5 text-muted-foreground shrink-0" />
           <div className="min-w-0">
             <p className="font-medium truncate">{sample.file.name}</p>
@@ -145,6 +177,49 @@ function NewSampleRow({
             className="rounded-md bg-muted/50 p-1"
           />
         )}
+      </div>
+
+      {/* Thumbnail upload */}
+      <div className="space-y-2">
+        <Label className="text-xs">Thumbnail (optional)</Label>
+        <div className="flex items-center gap-3">
+          {thumbPreview ? (
+            <>
+              <img
+                src={thumbPreview}
+                alt="Thumbnail preview"
+                className="h-16 w-16 rounded object-cover border"
+              />
+              <div className="flex flex-col gap-1">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => onUpdateNewSample(sample.id, "thumbnailFile", null)}
+                  disabled={isSubmitting}
+                >
+                  Remove
+                </Button>
+              </div>
+            </>
+          ) : (
+            <label className="flex items-center gap-2 cursor-pointer text-sm text-muted-foreground hover:text-foreground">
+              <Input
+                type="file"
+                accept="image/jpeg,image/png,image/webp,image/gif"
+                className="hidden"
+                onChange={(e) => {
+                  const f = e.target.files?.[0];
+                  if (f) onUpdateNewSample(sample.id, "thumbnailFile", f);
+                  e.target.value = "";
+                }}
+                disabled={isSubmitting}
+              />
+              <ImagePlus className="h-5 w-5" />
+              <span>Upload thumbnail (JPG, PNG, WebP)</span>
+            </label>
+          )}
+        </div>
       </div>
 
       <div className="grid grid-cols-5 gap-3">
