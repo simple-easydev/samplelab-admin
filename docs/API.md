@@ -262,6 +262,81 @@ const { data, error } = await supabase.rpc('get_creator_by_id', {
 
 ---
 
+### get_pack_by_id
+
+Returns one pack by ID as a single JSONB object with pack fields, samples array, and similar_packs array. For the pack detail page. Returns `null` if the pack is not found.
+
+| | |
+|---|---|
+| **Method** | `get_pack_by_id` |
+| **Parameters** | Object (required) |
+| **Auth** | `anon`, `authenticated`, `service_role` (RLS applies: published packs for anon; admins see all) |
+
+**Parameters**
+
+| Name | Type | Description |
+|------|------|-------------|
+| p_pack_id | uuid | Pack ID |
+
+**Response:** `jsonb` (single object or `null`)
+
+**Top-level pack fields (hero and metadata):**
+
+| Field | Type | Description |
+|-------|------|-------------|
+| id | uuid | Pack ID |
+| name | text | Pack name |
+| description | text | Pack description (nullable) |
+| cover_url | text | Cover image URL (nullable) |
+| creator_id | uuid | Creator ID (nullable) |
+| creator_name | text | Creator display name |
+| category_id | uuid | Category ID (nullable) |
+| category_name | text | Category name (or "Uncategorized") |
+| genres | string[] | Genre names for this pack |
+| tags | string[] | Pack tags |
+| is_premium | boolean | Premium flag |
+| samples_count | bigint | Count of Active/Disabled samples in this pack |
+| download_count | integer | Pack download count |
+| status | text | `"Draft"` \| `"Published"` \| `"Disabled"` |
+| created_at | timestamptz | Created at |
+
+**samples** (array): One entry per sample in this pack (Active/Disabled only).
+
+| Field | Type | Description |
+|-------|------|-------------|
+| id | uuid | Sample ID |
+| pack_id | uuid | Pack ID |
+| name | text | Sample name |
+| audio_url | text | URL to the sample audio file |
+| bpm | integer | BPM (nullable) |
+| key | text | Musical key (nullable) |
+| type | text | `"Loop"` \| `"One-shot"` |
+| length | text | Duration (e.g. "2:30") (nullable) |
+| file_size_bytes | bigint | File size (nullable) |
+| credit_cost | integer | Credit cost (nullable) |
+| status | text | `"Active"` \| `"Disabled"` |
+| has_stems | boolean | Whether sample has stems |
+| download_count | integer | Download count |
+| created_at | timestamptz | Created at |
+| creator_name | text | Pack creator name (for row display) |
+| thumbnail_url | text | Optional URL to sample thumbnail image (nullable) |
+| metadata | jsonb | Optional: `{ "bars": number[], "duration_seconds": number }` for waveform |
+
+**similar_packs** (array): Up to 6 packs—same creator, same category, or overlapping genres; excludes current pack; ordered by relevance (same creator first, then same category).
+
+Each element has the same shape as Packs tab rows: `id`, `name`, `creator_id`, `category_id`, `creator_name`, `category_name`, `genres` (text[]), `tags`, `samples_count`, `download_count`, `status`, `cover_url`, `created_at`, `is_premium`.
+
+**Example**
+
+```ts
+const { data, error } = await supabase.rpc('get_pack_by_id', {
+  p_pack_id: packId,
+});
+// data is one object or null; use data.samples and data.similar_packs for lists
+```
+
+---
+
 ## Auth & Admin
 
 ### get_invite_by_token
@@ -381,6 +456,7 @@ const { data, error } = await supabase.rpc('get_my_billing_info');
 | `get_all_moods` | All moods |
 | `get_creators_with_counts` | Creators list with counts (search, pagination) |
 | `get_creator_by_id` | Single creator detail (nested packs, samples, etc.) |
+| `get_pack_by_id` | Single pack detail (pack fields, samples[], similar_packs[]) |
 | `get_invite_by_token` | Validate admin invite token (anon) |
 | `get_stripe_products` | Plan tiers (optional onboarding filter) |
 | `get_my_billing_info` | Current user billing (customer + subscription) |
