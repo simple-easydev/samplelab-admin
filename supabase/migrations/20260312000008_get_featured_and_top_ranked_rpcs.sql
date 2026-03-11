@@ -9,7 +9,7 @@ RETURNS TABLE (
   creator_id uuid,
   creator_name text,
   cover_url text,
-  category_id uuid,
+  category_name text,
   tags text[],
   is_premium boolean,
   status text,
@@ -31,7 +31,7 @@ AS $$
     p.creator_id,
     COALESCE(c.name, '')::text AS creator_name,
     p.cover_url,
-    p.category_id,
+    COALESCE(cat.name, '')::text AS category_name,
     COALESCE(p.tags, ARRAY[]::text[]) AS tags,
     COALESCE(p.is_premium, false) AS is_premium,
     p.status,
@@ -42,6 +42,7 @@ AS $$
     COALESCE(s.samples_count, 0)::bigint AS samples_count
   FROM packs p
   LEFT JOIN creators c ON c.id = p.creator_id
+  LEFT JOIN categories cat ON cat.id = p.category_id
   LEFT JOIN (
     SELECT pack_id, COUNT(*) AS samples_count
     FROM samples
