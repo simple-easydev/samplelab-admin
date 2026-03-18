@@ -224,11 +224,11 @@ function NewSampleRow({
 
       <div className="grid grid-cols-5 gap-3">
         <div>
-          <Label className="text-xs">Name</Label>
+          <Label className="text-xs">Title</Label>
           <Input
             value={sample.name}
             onChange={(e) => onUpdateNewSample(sample.id, "name", e.target.value)}
-            placeholder="Sample name"
+            placeholder="Sample title"
             disabled={isSubmitting}
             className="h-9"
           />

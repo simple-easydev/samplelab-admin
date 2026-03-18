@@ -794,9 +794,9 @@ export default function CreatePackPage() {
                         {/* Metadata Fields */}
                         <div className="grid grid-cols-2 gap-2">
                           <div className="space-y-1">
-                            <Label className="text-xs">Sample Name</Label>
+                          <Label className="text-xs">Title</Label>
                             <Input
-                              placeholder="Sample name"
+                              placeholder="Sample title"
                               value={sample.name}
                               onChange={(e) => handleSampleChange(sample.id, "name", e.target.value)}
                               className="h-8 text-sm"
