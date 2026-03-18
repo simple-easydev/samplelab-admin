@@ -55,6 +55,7 @@ async function fetchAdminUsers(): Promise<{ users: User[] }> {
     id: user.id,
     email: user.email,
     name: user.name,
+    avatar_url: user.avatar_url ?? null,
     is_admin: user.is_admin,
     role: user.role as "full_admin" | "content_editor",
     status: user.status || "active" as "active" | "pending" | "disabled",
@@ -69,6 +70,7 @@ async function fetchAdminUsers(): Promise<{ users: User[] }> {
     id: invite.id, // Temporary ID until user is created
     email: invite.email,
     name: null,
+    avatar_url: null,
     is_admin: true,
     role: invite.role as "full_admin" | "content_editor",
     status: "pending" as const,
@@ -146,6 +148,7 @@ export interface AdminSampleRow {
   has_stems: boolean;
   stems_count: number;
   created_at: string;
+  thumbnail_url: string | null;
 }
 
 /** Sample shape for SamplesTab (pack as object, camelCase). */
@@ -163,6 +166,7 @@ export interface AdminSample {
   hasStems: boolean;
   stemsCount?: number;
   createdAt: string;
+  thumbnailUrl: string | null;
 }
 
 async function fetchAllSamplesForAdmin(): Promise<AdminSample[]> {
@@ -183,6 +187,7 @@ async function fetchAllSamplesForAdmin(): Promise<AdminSample[]> {
     hasStems: row.has_stems,
     stemsCount: row.stems_count,
     createdAt: row.created_at,
+    thumbnailUrl: row.thumbnail_url,
   }));
 }
 

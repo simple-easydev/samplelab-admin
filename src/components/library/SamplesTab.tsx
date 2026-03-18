@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { Music, Package, Search, Filter, ArrowUpDown, Eye, Edit, Trash2, Play, Ban, Check, Info, Tag, X, MoreHorizontal } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -39,6 +39,7 @@ interface Sample {
   status: "Active" | "Disabled";
   hasStems: boolean; // Does this sample have stems bundle?
   stemsCount?: number; // Number of stem files (if hasStems = true)
+  thumbnailUrl: string | null;
   createdAt: string;
 }
 
@@ -63,6 +64,7 @@ export function SamplesTab({
   isLoading,
   isError,
 }: SamplesTabProps) {
+  const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<SampleStatusFilter>("all");
   const [typeFilter, setTypeFilter] = useState<string>("all");
@@ -479,7 +481,30 @@ export function SamplesTab({
               ) : (
                 filteredAndSortedSamples.map((sample) => (
                   <TableRow key={sample.id}>
-                    <TableCell className="font-medium">{sample.name}</TableCell>
+                    <TableCell>
+                      <div className="flex items-center gap-3">
+                        <div
+                          className={
+                            sample.thumbnailUrl
+                              ? "h-8 w-8 rounded-md overflow-hidden border bg-muted"
+                              : "h-8 w-8 rounded-md border bg-muted flex items-center justify-center text-xs text-muted-foreground"
+                          }
+                        >
+                          {sample.thumbnailUrl ? (
+                            <img
+                              src={sample.thumbnailUrl}
+                              alt=""
+                              loading="lazy"
+                              decoding="async"
+                              className="h-full w-full object-cover"
+                            />
+                          ) : (
+                            <span aria-hidden="true">—</span>
+                          )}
+                        </div>
+                        <span className="font-medium">{sample.name}</span>
+                      </div>
+                    </TableCell>
                     <TableCell>
                       <Link 
                         to={`/admin/library/packs/${sample.pack.id}`}
@@ -535,7 +560,13 @@ export function SamplesTab({
                               View Pack
                             </Link>
                           </DropdownMenuItem>
-                          <DropdownMenuItem>
+                          <DropdownMenuItem
+                            onClick={() =>
+                              navigate(
+                                `/admin/library/packs/${sample.pack.id}/edit?sampleId=${sample.id}`
+                              )
+                            }
+                          >
                             <Edit className="mr-2 h-4 w-4" />
                             Edit Sample
                           </DropdownMenuItem>

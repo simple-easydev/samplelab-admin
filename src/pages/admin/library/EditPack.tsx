@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
 import {
   ArrowLeft,
@@ -103,6 +103,8 @@ interface NewSampleFile {
 export default function EditPackPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const sampleIdToFocus = searchParams.get("sampleId");
 
   const [isLoadingPack, setIsLoadingPack] = useState(true);
   const [packNotFound, setPackNotFound] = useState(false);
@@ -159,6 +161,7 @@ export default function EditPackPage() {
   // Alert/Error states
   const [validationError, setValidationError] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [highlightedSampleId, setHighlightedSampleId] = useState<string | null>(null);
 
   // Load reference data (creators, genres, categories)
   useEffect(() => {
@@ -268,6 +271,25 @@ export default function EditPackPage() {
 
     loadPackData();
   }, [id]);
+
+  const shouldFocusSample =
+    !!sampleIdToFocus && existingSamples.some((s) => s.id === sampleIdToFocus);
+
+  useEffect(() => {
+    if (!shouldFocusSample || !sampleIdToFocus) return;
+
+    const el = document.querySelector<HTMLElement>(
+      `[data-sample-id="${sampleIdToFocus}"]`
+    );
+
+    if (!el) return;
+
+    el.scrollIntoView({ behavior: "smooth", block: "center" });
+    setHighlightedSampleId(sampleIdToFocus);
+
+    const t = window.setTimeout(() => setHighlightedSampleId(null), 2000);
+    return () => window.clearTimeout(t);
+  }, [shouldFocusSample, sampleIdToFocus]);
 
   const handleInputChange = (field: string, value: string) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
@@ -1032,9 +1054,10 @@ export default function EditPackPage() {
               return (
                 <div
                   key={sample.id}
+                  data-sample-id={sample.id}
                   className={`p-4 border rounded-lg ${
                     markedForDeletion ? "opacity-50 bg-destructive/5" : ""
-                  }`}
+                  } ${highlightedSampleId === sample.id ? "ring-2 ring-purple-500" : ""}`}
                 >
                   <div className="flex items-start justify-between mb-3">
                     <div className="flex items-center gap-3">
