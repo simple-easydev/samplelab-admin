@@ -36,6 +36,7 @@ interface Sample {
   key: string | null;
   type: "Loop" | "One-shot"; // NOTE: 'Stem' is NOT a type - stems are bundles attached to samples
   downloads: number;
+  creditCost: number | null;
   status: "Active" | "Disabled";
   hasStems: boolean; // Does this sample have stems bundle?
   stemsCount?: number; // Number of stem files (if hasStems = true)
@@ -465,6 +466,7 @@ export function SamplesTab({
                 <TableHead>Creator</TableHead>
                 <TableHead>BPM / Key</TableHead>
                 <TableHead>Type</TableHead>
+                  <TableHead className="text-right">Credit Cost</TableHead>
                 <TableHead>Stems</TableHead>
                 <TableHead className="text-right">Downloads</TableHead>
                 <TableHead>Status</TableHead>
@@ -474,7 +476,7 @@ export function SamplesTab({
             <TableBody>
               {filteredAndSortedSamples.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={9} className="text-center py-8 text-muted-foreground">
+                    <TableCell colSpan={10} className="text-center py-8 text-muted-foreground">
                     No samples found
                   </TableCell>
                 </TableRow>
@@ -525,6 +527,9 @@ export function SamplesTab({
                     </TableCell>
                     <TableCell>
                       <Badge variant="outline">{sample.type}</Badge>
+                    </TableCell>
+                    <TableCell className="text-right">
+                      {sample.creditCost == null ? "Auto" : sample.creditCost}
                     </TableCell>
                     <TableCell>
                       {sample.hasStems ? (

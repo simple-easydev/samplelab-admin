@@ -162,6 +162,7 @@ export default function EditPackPage() {
   const [validationError, setValidationError] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [highlightedSampleId, setHighlightedSampleId] = useState<string | null>(null);
+  const [savingSampleId, setSavingSampleId] = useState<string | null>(null);
 
   // Load reference data (creators, genres, categories)
   useEffect(() => {
@@ -386,6 +387,45 @@ export default function EditPackPage() {
         sample.id === sampleId ? { ...sample, [field]: value } : sample
       )
     );
+  };
+
+  // Persist edits for a single existing sample without saving the whole pack.
+  const handleSaveSingleExistingSample = async (sampleId: string) => {
+    const sample = existingSamples.find((s) => s.id === sampleId);
+    if (!sample) return;
+    if (samplesToDelete.includes(sampleId)) return;
+    if (!sample.isModified) return;
+
+    setSavingSampleId(sampleId);
+    try {
+      const { error } = await supabase
+        .from("samples")
+        .update({
+          name: sample.name,
+          bpm: sample.bpm,
+          key: sample.key,
+          type: sample.type,
+          length: sample.length,
+          credit_cost: sample.credit_cost,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", sample.id);
+
+      if (error) throw error;
+
+      setExistingSamples((prev) =>
+        prev.map((s) => (s.id === sampleId ? { ...s, isModified: false } : s))
+      );
+
+      toast.success("Sample saved", { description: `Updated "${sample.name}"` });
+    } catch (err: any) {
+      console.error("Error saving sample:", err);
+      toast.error("Failed to save sample", {
+        description: err?.message || "Unknown error",
+      });
+    } finally {
+      setSavingSampleId(null);
+    }
   };
 
   const handleStemUpload = (sampleId: string, files: FileList | null, isNew: boolean) => {
@@ -1115,20 +1155,34 @@ export default function EditPackPage() {
                           </Button>
                         </>
                       ) : (
-                        <Button
-                          variant="destructive"
-                          size="sm"
-                          onClick={() => handleMarkExistingSampleForDeletion(sample.id)}
-                        >
-                          <Trash2 className="h-4 w-4 mr-2" />
-                          Delete
-                        </Button>
+                        <>
+                          {sample.isModified && (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              disabled={savingSampleId === sample.id}
+                              onClick={() => handleSaveSingleExistingSample(sample.id)}
+                            >
+                              {savingSampleId === sample.id ? "Saving..." : "Save"}
+                            </Button>
+                          )}
+                          <Button
+                            variant="destructive"
+                            size="sm"
+                            onClick={() =>
+                              handleMarkExistingSampleForDeletion(sample.id)
+                            }
+                          >
+                            <Trash2 className="h-4 w-4 mr-2" />
+                            Delete
+                          </Button>
+                        </>
                       )}
                     </div>
                   </div>
 
                   {!markedForDeletion && (
-                    <div className="grid grid-cols-4 gap-3">
+                    <div className="grid grid-cols-5 gap-3">
                       <div>
                         <Label className="text-xs">Name</Label>
                         <Input
@@ -1192,6 +1246,22 @@ export default function EditPackPage() {
                             </DropdownMenuItem>
                           </DropdownMenuContent>
                         </DropdownMenu>
+                      </div>
+                      <div>
+                        <Label className="text-xs">Credit Cost</Label>
+                        <Input
+                          type="number"
+                          value={sample.credit_cost ?? ""}
+                          onChange={(e) =>
+                            handleUpdateExistingSample(
+                              sample.id,
+                              "credit_cost",
+                              e.target.value ? parseInt(e.target.value) : null
+                            )
+                          }
+                          placeholder="Auto"
+                          className="h-9"
+                        />
                       </div>
                     </div>
                   )}

@@ -144,6 +144,7 @@ export interface AdminSampleRow {
   key: string | null;
   type: string;
   download_count: number;
+  credit_cost: number | null;
   status: string;
   has_stems: boolean;
   stems_count: number;
@@ -162,6 +163,7 @@ export interface AdminSample {
   key: string | null;
   type: "Loop" | "One-shot";
   downloads: number;
+  creditCost: number | null;
   status: "Active" | "Disabled";
   hasStems: boolean;
   stemsCount?: number;
@@ -183,6 +185,7 @@ async function fetchAllSamplesForAdmin(): Promise<AdminSample[]> {
     key: row.key,
     type: row.type as "Loop" | "One-shot",
     downloads: row.download_count,
+    creditCost: row.credit_cost,
     status: row.status as "Active" | "Disabled",
     hasStems: row.has_stems,
     stemsCount: row.stems_count,
