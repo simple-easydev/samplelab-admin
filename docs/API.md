@@ -65,7 +65,7 @@ Returns all samples with pack, creator, genre, and stem count. For admin library
 |-------|------|-------------|
 | id | uuid | Sample ID |
 | name | text | Sample name |
-| audio_url | text | URL to the sample audio file |
+| preview_audio_url | text | URL to the sample preview audio file |
 | pack_id | uuid | Pack ID |
 | pack_name | text | Pack name |
 | creator_name | text | Creator display name |

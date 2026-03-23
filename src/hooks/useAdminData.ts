@@ -136,6 +136,7 @@ export function useCustomers() {
 export interface AdminSampleRow {
   id: string;
   name: string;
+  preview_audio_url?: string | null;
   pack_id: string;
   pack_name: string;
   creator_name: string;
@@ -169,6 +170,7 @@ export interface AdminSample {
   stemsCount?: number;
   createdAt: string;
   thumbnailUrl: string | null;
+  previewAudioUrl?: string | null;
 }
 
 async function fetchAllSamplesForAdmin(): Promise<AdminSample[]> {
@@ -191,6 +193,7 @@ async function fetchAllSamplesForAdmin(): Promise<AdminSample[]> {
     stemsCount: row.stems_count,
     createdAt: row.created_at,
     thumbnailUrl: row.thumbnail_url,
+    previewAudioUrl: row.preview_audio_url ?? null,
   }));
 }
 
