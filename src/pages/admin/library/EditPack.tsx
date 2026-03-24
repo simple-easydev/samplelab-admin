@@ -1248,19 +1248,36 @@ export default function EditPackPage() {
                       </div>
                       <div>
                         <Label className="text-xs">Credit Cost</Label>
-                        <Input
-                          type="number"
-                          value={sample.credit_cost ?? ""}
-                          onChange={(e) =>
-                            handleUpdateExistingSample(
-                              sample.id,
-                              "credit_cost",
-                              e.target.value ? parseInt(e.target.value) : null
-                            )
-                          }
-                          placeholder="Auto"
-                          className="h-9"
-                        />
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="outline" size="sm" className="w-full h-9 justify-start">
+                              {sample.credit_cost ?? "Select credit"}
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent>
+                            <DropdownMenuItem
+                              onClick={() =>
+                                handleUpdateExistingSample(sample.id, "credit_cost", 1)
+                              }
+                            >
+                              1
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                              onClick={() =>
+                                handleUpdateExistingSample(sample.id, "credit_cost", 2)
+                              }
+                            >
+                              2
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                              onClick={() =>
+                                handleUpdateExistingSample(sample.id, "credit_cost", 5)
+                              }
+                            >
+                              5
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
                       </div>
                     </div>
                   )}
