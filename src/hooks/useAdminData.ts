@@ -139,6 +139,7 @@ export interface AdminSampleRow {
   preview_audio_url?: string | null;
   pack_id: string;
   pack_name: string;
+  creator_id: string | null;
   creator_name: string;
   genre: string;
   bpm: number | null;
@@ -158,6 +159,7 @@ export interface AdminSample {
   id: string;
   name: string;
   pack: { id: string; name: string };
+  creatorId: string | null;
   creator: string;
   genre: string;
   bpm: number | null;
@@ -181,6 +183,7 @@ async function fetchAllSamplesForAdmin(): Promise<AdminSample[]> {
     id: row.id,
     name: row.name,
     pack: { id: row.pack_id, name: row.pack_name },
+    creatorId: row.creator_id ?? null,
     creator: row.creator_name,
     genre: row.genre,
     bpm: row.bpm,
