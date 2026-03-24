@@ -1,7 +1,7 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
-import { ArrowLeft, Package, Upload, X, Play, Pause, Trash2, FileAudio, Loader2 } from "lucide-react";
+import { ArrowLeft, Package, Upload, X, Loader2 } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -19,14 +19,11 @@ import {
   DropdownMenuCheckboxItem,
 } from "@/components/ui/dropdown-menu";
 import {
-  uploadAudioFile,
   uploadPackCover,
-  uploadMultipleAudioFiles,
   createPackWithSamples,
   getCreators,
   getGenres,
   getCategories,
-  type AudioUploadResult,
 } from "@/lib/audio-upload";
 
 interface Creator {
@@ -44,19 +41,6 @@ interface Category {
   name: string;
 }
 
-interface SampleFile {
-  id: string;
-  file: File;
-  name: string;
-  bpm: string;
-  key: string;
-  type: "Loop" | "One-shot";
-  length: string;
-  creditCost: string;
-  hasStems: boolean;
-  stemFiles: File[];
-}
-
 export default function CreatePackPage() {
   const navigate = useNavigate();
   const [formData, setFormData] = useState({
@@ -72,7 +56,6 @@ export default function CreatePackPage() {
   const [tagInput, setTagInput] = useState("");
   const [coverPreview, setCoverPreview] = useState<string | null>(null);
   const [coverFile, setCoverFile] = useState<File | null>(null);
-  const [sampleFiles, setSampleFiles] = useState<SampleFile[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [uploadProgress, setUploadProgress] = useState({
     step: "",
@@ -81,8 +64,6 @@ export default function CreatePackPage() {
     percentage: 0,
     message: "",
   });
-  const [playingSampleId, setPlayingSampleId] = useState<string | null>(null);
-  const audioRef = useRef<HTMLAudioElement | null>(null);
 
   // Alert/Error states
   const [validationError, setValidationError] = useState<string | null>(null);
@@ -179,95 +160,6 @@ export default function CreatePackPage() {
     fetchReferenceData();
   }, []);
 
-  const handleAudioUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = Array.from(e.target.files || []);
-    const newSamples: SampleFile[] = files.map(file => ({
-      id: Math.random().toString(36).substr(2, 9),
-      file,
-      name: file.name.replace(/\.[^/.]+$/, ""),
-      bpm: "",
-      key: "",
-      type: "One-shot",
-      length: "",
-      creditCost: "",
-      hasStems: false,
-      stemFiles: [],
-    }));
-    setSampleFiles(prev => [...prev, ...newSamples]);
-  };
-
-  const handleRemoveSample = (id: string) => {
-    setSampleFiles(prev => prev.filter(s => s.id !== id));
-  };
-
-  const handleSampleChange = (id: string, field: keyof SampleFile, value: any) => {
-    setSampleFiles(prev =>
-      prev.map(sample =>
-        sample.id === id ? { ...sample, [field]: value } : sample
-      )
-    );
-  };
-
-  const handleStemUpload = (sampleId: string, e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = Array.from(e.target.files || []);
-    setSampleFiles(prev =>
-      prev.map(sample =>
-        sample.id === sampleId ? { ...sample, stemFiles: files } : sample
-      )
-    );
-  };
-
-  const handlePlayPause = (sampleId: string) => {
-    const sample = sampleFiles.find(s => s.id === sampleId);
-    if (!sample) return;
-
-    // If this sample is already playing, pause it
-    if (playingSampleId === sampleId && audioRef.current) {
-      audioRef.current.pause();
-      setPlayingSampleId(null);
-      return;
-    }
-
-    // Stop any currently playing audio
-    if (audioRef.current) {
-      audioRef.current.pause();
-      audioRef.current = null;
-    }
-
-    // Create a new audio element and play the sample
-    const audioUrl = URL.createObjectURL(sample.file);
-    const audio = new Audio(audioUrl);
-    audioRef.current = audio;
-
-    audio.play().catch(error => {
-      console.error("Error playing audio:", error);
-      setErrorMessage("Failed to play audio. Please check the file format.");
-    });
-
-    audio.onended = () => {
-      setPlayingSampleId(null);
-      URL.revokeObjectURL(audioUrl);
-    };
-
-    audio.onerror = () => {
-      setPlayingSampleId(null);
-      URL.revokeObjectURL(audioUrl);
-      setErrorMessage("Error playing audio file.");
-    };
-
-    setPlayingSampleId(sampleId);
-  };
-
-  // Cleanup audio on unmount
-  useEffect(() => {
-    return () => {
-      if (audioRef.current) {
-        audioRef.current.pause();
-        audioRef.current = null;
-      }
-    };
-  }, []);
-
   const handleSaveDraft = async () => {
     // Basic validation
     setValidationError(null);
@@ -287,11 +179,6 @@ export default function CreatePackPage() {
       return;
     }
 
-    if (sampleFiles.length === 0) {
-      setValidationError("Please upload at least one sample file before publishing");
-      return;
-    }
-
     await createPack("Published");
   };
 
@@ -299,7 +186,7 @@ export default function CreatePackPage() {
     setIsSubmitting(true);
     
     // Calculate total steps
-    const totalSteps = 5; // Initialize, cover, samples, stems, database
+    const totalSteps = 3; // Initialize, cover, database
     let currentStep = 0;
 
     const updateProgress = (step: string, message: string, current?: number, total?: number) => {
@@ -331,86 +218,7 @@ export default function CreatePackPage() {
         currentStep++; // Skip cover step if no file
       }
 
-      // Step 3: Upload all sample audio files
-      updateProgress("Samples", `Uploading samples...`, 0, sampleFiles.length);
-      const sampleUploadPromises = sampleFiles.map((sample, index) =>
-        uploadAudioFile(sample.file, "samples").then((result: AudioUploadResult) => {
-          setUploadProgress(prev => ({
-            ...prev,
-            current: index + 1,
-            message: `Uploading sample ${index + 1} of ${sampleFiles.length}...`,
-          }));
-          return result;
-        })
-      );
-      const sampleUploadResults = await Promise.all(sampleUploadPromises);
-
-      // Check for upload failures
-      const failedUploads = sampleUploadResults.filter((r: AudioUploadResult) => !r.success);
-      if (failedUploads.length > 0) {
-        throw new Error(
-          `${failedUploads.length} sample(s) failed to upload: ${failedUploads[0].error}`
-        );
-      }
-
-      // Step 4: Upload stems for samples that have them
-      const samplesWithStems = sampleFiles.filter((s) => s.hasStems && s.stemFiles.length > 0);
-      const totalStemFiles = samplesWithStems.reduce((acc, s) => acc + s.stemFiles.length, 0);
-      let stemUploadResults: AudioUploadResult[][] = [];
-      
-      if (totalStemFiles > 0) {
-        updateProgress("Stems", "Uploading stem files...", 0, totalStemFiles);
-        let stemsUploaded = 0;
-        const stemUploadPromises = samplesWithStems.map((sample) =>
-          uploadMultipleAudioFiles(sample.stemFiles, "stems").then((results: AudioUploadResult[]) => {
-            stemsUploaded += results.length;
-            setUploadProgress(prev => ({
-              ...prev,
-              current: stemsUploaded,
-              message: `Uploading stems ${stemsUploaded} of ${totalStemFiles}...`,
-            }));
-            return results;
-          })
-        );
-        stemUploadResults = await Promise.all(stemUploadPromises);
-      } else {
-        currentStep++; // Skip stems step if none
-      }
-
-      // Step 5: Build samples data array with uploaded URLs
-      const samplesData = sampleFiles.map((sample, index) => {
-        const uploadResult = sampleUploadResults[index];
-
-        // Find stems for this sample
-        let stems: { name: string; audio_url: string; file_size_bytes?: number }[] = [];
-        if (sample.hasStems && sample.stemFiles.length > 0) {
-          const stemIndex = samplesWithStems.indexOf(sample);
-          if (stemIndex >= 0) {
-            stems = stemUploadResults[stemIndex]
-              .filter((r: AudioUploadResult) => r.success)
-              .map((result: AudioUploadResult, i: number) => ({
-                name: sample.stemFiles[i].name,
-                audio_url: result.url!,
-                file_size_bytes: sample.stemFiles[i].size,
-              }));
-          }
-        }
-
-        return {
-          name: sample.name,
-          audio_url: uploadResult.url!,
-          bpm: sample.bpm ? parseInt(sample.bpm) : undefined,
-          key: sample.key || undefined,
-          type: sample.type,
-          length: sample.length || undefined,
-          file_size_bytes: sample.file.size,
-          credit_cost: sample.creditCost ? parseInt(sample.creditCost) : undefined,
-          has_stems: sample.hasStems && stems.length > 0,
-          stems,
-        };
-      });
-
-      // Step 5: Create the pack in database
+      // Step 3: Create the pack in database
       updateProgress("Database", "Creating pack in database...", 1, 1);
       const result = await createPackWithSamples(
         {
@@ -424,7 +232,7 @@ export default function CreatePackPage() {
           status,
           genres: formData.genres, // Array of genre UUIDs
         },
-        samplesData
+        []
       );
 
       if (!result.success) {
@@ -446,7 +254,7 @@ export default function CreatePackPage() {
           ? `Pack "${formData.name}" saved as draft!`
           : `Pack "${formData.name}" published successfully!`,
         {
-          description: status === "Draft" 
+          description: status === "Draft"
             ? "You can edit and publish it later." 
             : "The pack is now live and available to users.",
           duration: 4000,
@@ -735,232 +543,6 @@ export default function CreatePackPage() {
             </CardContent>
           </Card>
 
-          {/* Upload Audio Files */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Upload Audio Files</CardTitle>
-              <CardDescription>Upload multiple files (WAV / MP3)</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {/* Upload Button */}
-              <div>
-                <Label htmlFor="audio-upload" className="cursor-pointer">
-                  <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-gray-400 transition-colors">
-                    <FileAudio className="h-8 w-8 mx-auto mb-2 text-gray-400" />
-                    <p className="text-sm text-gray-600">
-                      Click to upload multiple audio files
-                    </p>
-                    <p className="text-xs text-gray-400 mt-1">
-                      WAV / MP3 files
-                    </p>
-                  </div>
-                </Label>
-                <Input
-                  id="audio-upload"
-                  type="file"
-                  accept="audio/*,.wav,.mp3"
-                  multiple
-                  className="hidden"
-                  onChange={handleAudioUpload}
-                />
-              </div>
-
-              {/* Sample Files List with Metadata */}
-              {sampleFiles.length > 0 && (
-                <div className="space-y-4">
-                  <Separator />
-                  <p className="text-sm font-medium">
-                    {sampleFiles.length} sample{sampleFiles.length !== 1 ? "s" : ""} uploaded
-                  </p>
-                  
-                  {sampleFiles.map((sample, index) => (
-                    <Card key={sample.id} className="bg-muted/50">
-                      <CardContent className="pt-4 space-y-3">
-                        <div className="flex items-start justify-between">
-                          <div className="flex-1">
-                            <p className="font-medium text-sm mb-1">Sample #{index + 1}</p>
-                            <p className="text-xs text-muted-foreground truncate">{sample.file.name}</p>
-                          </div>
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => handleRemoveSample(sample.id)}
-                          >
-                            <Trash2 className="h-4 w-4 text-destructive" />
-                          </Button>
-                        </div>
-
-                        {/* Metadata Fields */}
-                        <div className="grid grid-cols-2 gap-2">
-                          <div className="space-y-1">
-                          <Label className="text-xs">Title</Label>
-                            <Input
-                              placeholder="Sample title"
-                              value={sample.name}
-                              onChange={(e) => handleSampleChange(sample.id, "name", e.target.value)}
-                              className="h-8 text-sm"
-                            />
-                          </div>
-                          <div className="space-y-1">
-                            <Label className="text-xs">Type</Label>
-                            <DropdownMenu>
-                              <DropdownMenuTrigger asChild>
-                                <Button variant="outline" size="sm" className="w-full justify-start h-8 text-sm">
-                                  {sample.type}
-                                </Button>
-                              </DropdownMenuTrigger>
-                              <DropdownMenuContent>
-                                <DropdownMenuItem onClick={() => handleSampleChange(sample.id, "type", "Loop")}>
-                                  Loop
-                                </DropdownMenuItem>
-                                <DropdownMenuItem onClick={() => handleSampleChange(sample.id, "type", "One-shot")}>
-                                  One-shot
-                                </DropdownMenuItem>
-                              </DropdownMenuContent>
-                            </DropdownMenu>
-                          </div>
-                        </div>
-
-                        <div className="grid grid-cols-3 gap-2">
-                          <div className="space-y-1">
-                            <Label className="text-xs">BPM</Label>
-                            <Input
-                              type="number"
-                              placeholder="BPM"
-                              value={sample.bpm}
-                              onChange={(e) => handleSampleChange(sample.id, "bpm", e.target.value)}
-                              className="h-8 text-sm"
-                            />
-                          </div>
-                          <div className="space-y-1">
-                            <Label className="text-xs">Key</Label>
-                            <Input
-                              placeholder="e.g., Am"
-                              value={sample.key}
-                              onChange={(e) => handleSampleChange(sample.id, "key", e.target.value)}
-                              className="h-8 text-sm"
-                            />
-                          </div>
-                          <div className="space-y-1">
-                            <Label className="text-xs">Length</Label>
-                            <Input
-                              placeholder="e.g., 2:30"
-                              value={sample.length}
-                              onChange={(e) => handleSampleChange(sample.id, "length", e.target.value)}
-                              className="h-8 text-sm"
-                            />
-                          </div>
-                        </div>
-
-                        <div className="space-y-1">
-                          <Label className="text-xs">Credit Cost Override (optional)</Label>
-                          <Input
-                            type="number"
-                            placeholder="Leave empty for default cost"
-                            value={sample.creditCost}
-                            onChange={(e) => handleSampleChange(sample.id, "creditCost", e.target.value)}
-                            className="h-8 text-sm"
-                          />
-                        </div>
-
-                        {/* Has Stems Toggle */}
-                        <div className="flex items-center justify-between p-3 bg-background border rounded-md">
-                          <div>
-                            <Label className="text-sm">Has stems?</Label>
-                            <p className="text-xs text-muted-foreground">If yes = upload stems (multiple files)</p>
-                          </div>
-                          <Button
-                            type="button"
-                            size="sm"
-                            variant={sample.hasStems ? "default" : "outline"}
-                            onClick={() => handleSampleChange(sample.id, "hasStems", !sample.hasStems)}
-                          >
-                            {sample.hasStems ? "Yes" : "No"}
-                          </Button>
-                        </div>
-
-                        {/* Stem Files Upload */}
-                        {sample.hasStems && (
-                          <div className="space-y-2 pl-4 border-l-2 border-primary/20">
-                            <Label htmlFor={`stems-${sample.id}`} className="text-xs cursor-pointer">
-                              <div className="border border-dashed rounded p-3 text-center hover:border-gray-400 transition-colors">
-                                <Upload className="h-4 w-4 mx-auto mb-1 text-gray-400" />
-                                <p className="text-xs text-gray-600">Upload stem files</p>
-                              </div>
-                            </Label>
-                            <Input
-                              id={`stems-${sample.id}`}
-                              type="file"
-                              accept="audio/*,.wav,.mp3"
-                              multiple
-                              className="hidden"
-                              onChange={(e) => handleStemUpload(sample.id, e)}
-                            />
-                            {sample.stemFiles.length > 0 && (
-                              <div className="space-y-1">
-                                {sample.stemFiles.map((stem, i) => (
-                                  <div key={i} className="text-xs text-muted-foreground flex items-center gap-1">
-                                    <FileAudio className="h-3 w-3" />
-                                    {stem.name}
-                                  </div>
-                                ))}
-                              </div>
-                            )}
-                          </div>
-                        )}
-                      </CardContent>
-                    </Card>
-                  ))}
-                </div>
-              )}
-            </CardContent>
-          </Card>
-
-          {/* Quality Check */}
-          {sampleFiles.length > 0 && (
-            <Card>
-              <CardHeader>
-                <CardTitle>Quality Check</CardTitle>
-                <CardDescription>Play previews inside admin</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-2">
-                  {sampleFiles.map((sample, index) => {
-                    const isPlaying = playingSampleId === sample.id;
-                    return (
-                      <div key={sample.id} className="flex items-center gap-3 p-3 border rounded-lg hover:bg-muted/50">
-                        <Button
-                          type="button"
-                          variant={isPlaying ? "default" : "outline"}
-                          size="icon"
-                          className="shrink-0"
-                          onClick={() => handlePlayPause(sample.id)}
-                        >
-                          {isPlaying ? (
-                            <Pause className="h-4 w-4" />
-                          ) : (
-                            <Play className="h-4 w-4" />
-                          )}
-                        </Button>
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm font-medium truncate">{sample.name || `Sample ${index + 1}`}</p>
-                          <p className="text-xs text-muted-foreground">
-                            {sample.type} {sample.bpm && `• ${sample.bpm} BPM`} {sample.key && `• ${sample.key}`}
-                          </p>
-                        </div>
-                        {sample.hasStems && (
-                          <Badge variant="secondary" className="text-xs">
-                            {sample.stemFiles.length} stems
-                          </Badge>
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
-              </CardContent>
-            </Card>
-          )}
         </div>
 
         {/* Cover Image - Right Side (1 column) */}
@@ -1033,8 +615,8 @@ export default function CreatePackPage() {
             </CardHeader>
             <CardContent className="text-sm space-y-2">
               <div className="flex justify-between">
-                <span className="text-muted-foreground">Samples:</span>
-                <span className="font-medium">{sampleFiles.length}</span>
+                <span className="text-muted-foreground">Audio Upload:</span>
+                <span className="font-medium">Handled in dedicated software</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Type:</span>
@@ -1050,8 +632,8 @@ export default function CreatePackPage() {
               )}
               <Separator className="my-2" />
               <div className="text-xs text-muted-foreground space-y-1">
-                <p>• Upload samples with metadata</p>
-                <p>• Preview before publishing</p>
+                <p>• Create pack metadata</p>
+                <p>• Upload audio in dedicated software</p>
                 <p>• Save as draft or publish live</p>
               </div>
             </CardContent>

@@ -248,7 +248,7 @@ Returns one active creator by ID as a single JSONB object with nested packs, sam
 | genres | array | `[{ id, name }, ...]` |
 | categories | array | `[{ id, name }, ...]` |
 | packs | array | Pack rows (id, name, description, cover_url, …) |
-| samples | array | Sample rows (id, pack_id, name, audio_url, …) |
+| samples | array | Sample rows (id, pack_id, name, audio_url, preview_audio_url, …) |
 | similar_creators | array | `[{ id, name, avatar_url }, ...]` (up to 6) |
 
 **Example**
@@ -307,7 +307,8 @@ Returns one pack by ID as a single JSONB object with pack fields, samples array,
 | id | uuid | Sample ID |
 | pack_id | uuid | Pack ID |
 | name | text | Sample name |
-| audio_url | text | URL to the sample audio file |
+| audio_url | text | URL to the full sample audio file (credit-gated download) |
+| preview_audio_url | text | URL for preview playback (falls back to `audio_url` when unset) |
 | bpm | integer | BPM (nullable) |
 | key | text | Musical key (nullable) |
 | type | text | `"Loop"` \| `"One-shot"` |

@@ -313,7 +313,7 @@ export default function PackDetail() {
   }
 
   return (
-    <div className="p-6 space-y-6 max-w-7xl mx-auto">
+    <div className="p-6 space-y-6 w-full">
       {/* Page Header / Hero */}
       <div className="space-y-4">
         {/* Breadcrumbs */}

@@ -8,7 +8,6 @@ import {
   Play,
   Pause,
   Trash2,
-  FileAudio,
   Loader2,
   AlertCircle,
   Save,
@@ -848,7 +847,7 @@ export default function EditPackPage() {
   const totalSamples = existingSamples.filter((s) => !samplesToDelete.includes(s.id)).length + newSampleFiles.length;
 
   return (
-    <div className="p-6 space-y-6 max-w-6xl mx-auto">
+    <div className="p-6 space-y-6 w-full">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">
@@ -1277,18 +1276,6 @@ export default function EditPackPage() {
           </CardContent>
         </Card>
       )}
-
-      {/* Add New Samples */}
-      <NewSamplesSection
-        newSampleFiles={newSampleFiles}
-        isSubmitting={isSubmitting}
-        onSampleUpload={handleSampleUpload}
-        onRemoveNewSample={handleRemoveNewSample}
-        onUpdateNewSample={handleUpdateNewSample}
-        onStemUpload={(sampleId, files) => handleStemUpload(sampleId, files, true)}
-        onRemoveStems={(sampleId) => handleRemoveStems(sampleId, true)}
-        onWaveformReady={handleWaveformReady}
-      />
 
       {/* Status Summary */}
       <Card>
