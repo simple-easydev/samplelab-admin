@@ -144,6 +144,7 @@ export interface AdminSampleRow {
   genre: string;
   bpm: number | null;
   key: string | null;
+  instrument: string | null;
   type: string;
   download_count: number;
   credit_cost: number | null;
@@ -164,6 +165,7 @@ export interface AdminSample {
   genre: string;
   bpm: number | null;
   key: string | null;
+  instrument: string | null;
   type: "Loop" | "One-shot";
   downloads: number;
   creditCost: number | null;
@@ -188,6 +190,7 @@ async function fetchAllSamplesForAdmin(): Promise<AdminSample[]> {
     genre: row.genre,
     bpm: row.bpm,
     key: row.key,
+    instrument: row.instrument ?? null,
     type: row.type as "Loop" | "One-shot",
     downloads: row.download_count,
     creditCost: row.credit_cost,

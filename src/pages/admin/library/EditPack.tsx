@@ -75,6 +75,7 @@ interface ExistingSample {
   thumbnail_url: string | null;
   bpm: number | null;
   key: string | null;
+  instrument: string | null;
   type: "Loop" | "One-shot";
   length: string | null;
   file_size_bytes: number | null;
@@ -258,6 +259,7 @@ export default function EditPackPage() {
         setExistingSamples(
           samplesData?.map((s: any) => ({
             ...s,
+            instrument: s.instrument ?? null,
             isModified: false,
           })) || []
         );
@@ -403,6 +405,7 @@ export default function EditPackPage() {
           name: sample.name,
           bpm: sample.bpm,
           key: sample.key,
+          instrument: sample.instrument,
           type: sample.type,
           length: sample.length,
           credit_cost: sample.credit_cost,
@@ -626,6 +629,7 @@ export default function EditPackPage() {
               name: sample.name,
               bpm: sample.bpm,
               key: sample.key,
+              instrument: sample.instrument,
               type: sample.type,
               length: sample.length,
               credit_cost: sample.credit_cost,

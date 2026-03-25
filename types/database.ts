@@ -518,6 +518,7 @@ export type Database = {
           file_size_bytes: number | null
           has_stems: boolean | null
           id: string
+          instrument: string | null
           key: string | null
           length: string | null
           metadata: Json | null
@@ -540,6 +541,7 @@ export type Database = {
           file_size_bytes?: number | null
           has_stems?: boolean | null
           id?: string
+          instrument?: string | null
           key?: string | null
           length?: string | null
           metadata?: Json | null
@@ -562,6 +564,7 @@ export type Database = {
           file_size_bytes?: number | null
           has_stems?: boolean | null
           id?: string
+          instrument?: string | null
           key?: string | null
           length?: string | null
           metadata?: Json | null
@@ -897,6 +900,7 @@ export type Database = {
           genre: string
           has_stems: boolean
           id: string
+          instrument: string | null
           key: string
           metadata: Json
           name: string
