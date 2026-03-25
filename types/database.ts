@@ -787,6 +787,10 @@ export type Database = {
         }
         Returns: boolean
       }
+      get_my_credit_activity: {
+        Args: { p_limit?: number; p_offset?: number }
+        Returns: Json
+      }
       create_admin_user_record: {
         Args: {
           p_email: string
