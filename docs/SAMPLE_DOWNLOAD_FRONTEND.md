@@ -9,11 +9,13 @@ This guide is for the **customer-facing app** (not the admin app). It explains h
 
 **Storage:** Full files live in the private bucket **`private-audios`**. The column **`samples.audio_url`** holds the path or public-style URL used to resolve the object for signing. Previews (e.g. `preview_audio_url`) are separate and may stay public.
 
+**Who can download (RPC rules):** Every full download requires (1) a **`customers`** row for the user, (2) at least one **`subscriptions`** row for that customer with `status` or `stripe_status` in **`active`** / **`trialing`**, and (3) **`customers.credit_balance` ≥ `samples.credit_cost`** (no debit when `credit_cost` is 0). Pack **`is_premium`** does not bypass the subscription check.
+
 ---
 
 ## Prerequisites
 
-1. Migrations applied, including `20260325120000_sample_download_signed_url.sql`.
+1. Migrations applied, including `20260325120000_sample_download_signed_url.sql` and `20260326000000_request_sample_download_subscription_all_packs.sql`.
 2. Edge Function `request-sample-download` deployed to the same Supabase project as the frontend.
 3. Frontend env (same project):
    - `VITE_SUPABASE_URL` / `NEXT_PUBLIC_SUPABASE_URL` (or your framework’s equivalent)
@@ -57,7 +59,7 @@ JSON body typically includes `code` and `message`. Map `code` in your UI.
 | 401 | `not_authenticated` | Missing or invalid JWT |
 | 402 | `insufficient_credits` | Not enough `credit_balance` |
 | 403 | `customer_not_found` | No `customers` row for this user |
-| 403 | `forbidden` | Premium pack requires an active subscription |
+| 403 | `forbidden` | No active subscription (`active` / `trialing` on `subscriptions`) |
 | 404 | `sample_not_found` | Sample missing or not published |
 | 409 | `idempotency_conflict` | Same idempotency key reused for a **different** sample |
 | 503 | `asset_unavailable` | Missing `audio_url`, or signing failed |
