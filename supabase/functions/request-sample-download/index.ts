@@ -21,9 +21,40 @@ function jsonResponse(body: object, status: number) {
   });
 }
 
+/** Buckets that may appear as the first path segment in path-only `audio_url` values. */
+function knownStorageBucketIds(defaultBucket: string): Set<string> {
+  return new Set([
+    defaultBucket,
+    "private-audios",
+    "preview-audios",
+    "audio-samples",
+  ]);
+}
+
+/**
+ * Path-only `audio_url` (no `https://`):
+ * - `samples/foo.wav` → object key `samples/foo.wav` in `defaultBucket`.
+ * - `private-audios/samples/foo.wav` → bucket `private-audios`, key `samples/foo.wav` (do not double the bucket).
+ */
+function pathOnlyToBucketAndPath(
+  noLeadingSlash: string,
+  defaultBucket: string,
+): { bucket: string; path: string } {
+  const firstSlash = noLeadingSlash.indexOf("/");
+  if (firstSlash === -1) {
+    return { bucket: defaultBucket, path: noLeadingSlash };
+  }
+  const first = noLeadingSlash.slice(0, firstSlash);
+  const rest = noLeadingSlash.slice(firstSlash + 1);
+  if (knownStorageBucketIds(defaultBucket).has(first)) {
+    return { bucket: first, path: rest };
+  }
+  return { bucket: defaultBucket, path: noLeadingSlash };
+}
+
 /**
  * Resolve Storage bucket + object path from `samples.audio_url`.
- * - Path-only values (no scheme): use defaultBucket.
+ * - Path-only values (no scheme): see `pathOnlyToBucketAndPath`.
  * - Full Supabase URLs: bucket is read from `/object/public/<bucket>/...` or `/object/sign/<bucket>/...`
  *   so legacy rows (e.g. old bucket name in URL) still sign correctly.
  */
@@ -35,7 +66,8 @@ function bucketAndPathFromAudioUrl(
   if (!trimmed) return null;
 
   if (!trimmed.includes("://") && !trimmed.startsWith("//")) {
-    return { bucket: defaultBucket, path: trimmed.replace(/^\/+/, "") };
+    const noLeadingSlash = trimmed.replace(/^\/+/, "");
+    return pathOnlyToBucketAndPath(noLeadingSlash, defaultBucket);
   }
 
   try {
@@ -195,9 +227,21 @@ Deno.serve(async (req) => {
     .createSignedUrl(objectPath, ttl, { download: filename });
 
   if (signError || !signed?.signedUrl) {
-    console.error("createSignedUrl", signError);
+    console.error("createSignedUrl failed", {
+      bucket,
+      objectPath,
+      audioUrlPrefix: audioUrl.slice(0, 120),
+      signError,
+    });
+    const hint =
+      "No file at this path in Storage. Check that samples.audio_url matches the bucket and object key (e.g. file exists under private-audios, or URL still points at an old bucket name).";
     return jsonResponse(
-      { code: "asset_unavailable", message: signError?.message ?? "Sign failed" },
+      {
+        code: "asset_unavailable",
+        message: signError?.message
+          ? `${signError.message}. ${hint}`
+          : hint,
+      },
       503,
     );
   }

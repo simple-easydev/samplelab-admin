@@ -165,6 +165,24 @@ Configured in the Supabase dashboard for the Edge Function, not in the browser:
 
 ---
 
+## Troubleshooting: `asset_unavailable` / "Object not found"
+
+The Edge Function debits credits in the database **before** it asks Storage for a signed URL. If signing fails with **"Object not found"** (or similar), Storage has **no object** at the bucket + path derived from **`samples.audio_url`**.
+
+**Checklist**
+
+1. **SQL:** `SELECT id, name, audio_url FROM samples WHERE id = '<sampleId>';`
+2. **Supabase Dashboard → Storage:** Open the bucket named in the URL (often **`private-audios`**, or an older name embedded in the URL such as **`audio-samples`**).
+3. Confirm the **object path** exists (e.g. `samples/1739….wav`). Path must match exactly (case-sensitive).
+4. **Mismatch:** If the file was moved to **`private-audios`** but **`audio_url`** still points at **`/object/public/audio-samples/...`**, signing uses **`audio-samples`** (from the URL). Either **update `audio_url`** in the DB to the new location or **copy the object** into the bucket/path the row references.
+5. **Path-only `audio_url`:** If the value has no `https://`:
+   - `samples/foo.wav` → object key **`samples/foo.wav`** in bucket **`private-audios`** (or `PRIVATE_AUDIOS_BUCKET`).
+   - **`private-audios/gold-dust-piano-chops-pack/.../file.wav`** → bucket **`private-audios`**, key **`gold-dust-piano-chops-pack/.../file.wav`** (leading bucket segment is stripped; it must not be duplicated inside `.from(bucket)`).
+
+**Edge Function logs** (Dashboard → Functions → Logs) include **`bucket`**, **`objectPath`**, and a snippet of **`audio_url`** for failed sign attempts—use that to compare with Storage.
+
+---
+
 ## Related
 
 - Migration: `supabase/migrations/20260325120000_sample_download_signed_url.sql`
