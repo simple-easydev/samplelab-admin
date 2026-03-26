@@ -458,6 +458,43 @@ const { data, error } = await supabase.rpc('get_my_billing_info');
 | `get_creators_with_counts` | Creators list with counts (search, pagination) |
 | `get_creator_by_id` | Single creator detail (nested packs, samples, etc.) |
 | `get_pack_by_id` | Single pack detail (pack fields, samples[], similar_packs[]) |
+| `get_similar_samples_by_downloaded_sample` | Similar samples for a downloaded seed sample (v1: same pack) |
 | `get_invite_by_token` | Validate admin invite token (anon) |
 | `get_stripe_products` | Plan tiers (optional onboarding filter) |
 | `get_my_billing_info` | Current user billing (customer + subscription) |
+
+---
+
+## Samples (Personalization)
+
+### get_similar_samples_by_downloaded_sample
+
+Returns “similar” samples to the caller’s **most recently downloaded** sample.
+
+Current similarity rules (v1):
+
+- Other samples in the **same pack** as the seed sample
+- Excludes the seed sample itself
+
+| | |
+|---|---|
+| **Method** | `get_similar_samples_by_downloaded_sample` |
+| **Parameters** | Object (required) |
+| **Auth** | `authenticated`, `service_role` |
+
+**Parameters**
+
+| Name | Type | Default | Description |
+|------|------|---------|-------------|
+| p_limit | int | 24 | Max rows (clamped to 1–100) |
+
+**Response:** Array of sample rows (pack + creator fields included). Each row repeats **`seed_sample_id`** and **`seed_sample_name`** (the last downloaded sample used as the similarity anchor).
+
+**Example**
+
+```ts
+const { data, error } = await supabase.rpc(
+  'get_similar_samples_by_downloaded_sample',
+  { p_limit: 24 }
+);
+```
