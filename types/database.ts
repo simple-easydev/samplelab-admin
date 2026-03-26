@@ -360,6 +360,7 @@ export type Database = {
           name: string
           status: string
           tags: string[] | null
+          trending_score: number | null
           updated_at: string | null
         }
         Insert: {
@@ -375,6 +376,7 @@ export type Database = {
           name: string
           status?: string
           tags?: string[] | null
+          trending_score?: number | null
           updated_at?: string | null
         }
         Update: {
@@ -390,6 +392,7 @@ export type Database = {
           name?: string
           status?: string
           tags?: string[] | null
+          trending_score?: number | null
           updated_at?: string | null
         }
         Relationships: [
@@ -719,6 +722,58 @@ export type Database = {
             columns: ["customer_id"]
             isOneToOne: false
             referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      user_pack_likes: {
+        Row: {
+          user_id: string
+          pack_id: string
+          created_at: string
+        }
+        Insert: {
+          user_id: string
+          pack_id: string
+          created_at?: string
+        }
+        Update: {
+          user_id?: string
+          pack_id?: string
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_pack_likes_pack_id_fkey"
+            columns: ["pack_id"]
+            isOneToOne: false
+            referencedRelation: "packs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      user_sample_likes: {
+        Row: {
+          user_id: string
+          sample_id: string
+          created_at: string
+        }
+        Insert: {
+          user_id: string
+          sample_id: string
+          created_at?: string
+        }
+        Update: {
+          user_id?: string
+          sample_id?: string
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_sample_likes_sample_id_fkey"
+            columns: ["sample_id"]
+            isOneToOne: false
+            referencedRelation: "samples"
             referencedColumns: ["id"]
           },
         ]
