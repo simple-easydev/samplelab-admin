@@ -1059,6 +1059,14 @@ export type Database = {
       }
       get_pack_by_id: { Args: { p_pack_id: string }; Returns: Json }
       get_pack_sample_count: { Args: { pack_uuid: string }; Returns: number }
+      get_similar_packs_by_liked_pack: {
+        Args: { p_limit?: number; p_pack_id?: string | null }
+        Returns: Json
+      }
+      get_similar_samples_by_downloaded_sample: {
+        Args: { p_limit?: number }
+        Returns: Json
+      }
       get_stripe_products: {
         Args: { visible_onboarding?: boolean }
         Returns: Json

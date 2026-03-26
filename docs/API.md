@@ -459,6 +459,7 @@ const { data, error } = await supabase.rpc('get_my_billing_info');
 | `get_creator_by_id` | Single creator detail (nested packs, samples, etc.) |
 | `get_pack_by_id` | Single pack detail (pack fields, samples[], similar_packs[]) |
 | `get_similar_samples_by_downloaded_sample` | Similar samples for a downloaded seed sample (v1: same pack) |
+| `get_similar_packs_by_liked_pack` | Similar packs for a pack the user liked (`liked_pack` + `similarities`) |
 | `get_invite_by_token` | Validate admin invite token (anon) |
 | `get_stripe_products` | Plan tiers (optional onboarding filter) |
 | `get_my_billing_info` | Current user billing (customer + subscription) |
@@ -488,7 +489,39 @@ Current similarity rules (v1):
 |------|------|---------|-------------|
 | p_limit | int | 24 | Max rows (clamped to 1–100) |
 
-**Response:** Array of sample rows (pack + creator fields included). Each row repeats **`seed_sample_id`** and **`seed_sample_name`** (the last downloaded sample used as the similarity anchor).
+**Response:** Single JSON object (`jsonb`), or `null` if the user is not authenticated or has no qualifying download in `credit_activity`.
+
+```json
+{
+  "seed_sample": {
+    "id": "550e8400-e29b-41d4-a716-446655440000",
+    "name": "sample title"
+  },
+  "similarities": [
+    {
+      "id": "…",
+      "name": "…",
+      "preview_audio_url": "…",
+      "pack_id": "…",
+      "pack_name": "…",
+      "creator_id": "…",
+      "creator_name": "…",
+      "genre": "…",
+      "bpm": 140,
+      "key": "Am",
+      "type": "One-shot",
+      "download_count": 0,
+      "status": "Active",
+      "has_stems": false,
+      "stems_count": 0,
+      "created_at": "…",
+      "metadata": {},
+      "thumbnail_url": null,
+      "credit_cost": 1
+    }
+  ]
+}
+```
 
 **Example**
 
@@ -497,4 +530,70 @@ const { data, error } = await supabase.rpc(
   'get_similar_samples_by_downloaded_sample',
   { p_limit: 24 }
 );
+// data: { seed_sample: { id, name }, similarities: [...] } | null
+```
+
+---
+
+## Packs (Personalization)
+
+### get_similar_packs_by_liked_pack
+
+Returns packs similar to a pack the user **liked** on `user_pack_likes`, plus the liked pack’s **id** and **name**.
+
+Similarity rules match `get_pack_by_id` → `similar_packs`: same creator, same category, or overlapping genres. Only **`Published`** packs appear in `similarities`.
+
+| | |
+|---|---|
+| **Method** | `get_similar_packs_by_liked_pack` |
+| **Parameters** | Object (optional) |
+| **Auth** | `authenticated`, `service_role` |
+| **Security** | `SECURITY DEFINER` (verifies the like row belongs to `auth.uid()`) |
+
+**Parameters**
+
+| Name | Type | Default | Description |
+|------|------|---------|-------------|
+| p_pack_id | uuid | null | Liked pack to use as the seed. Must exist in `user_pack_likes` for the caller. If omitted, uses the **most recently** liked pack. |
+| p_limit | int | 6 | Max similar packs (clamped to 1–100) |
+
+**Response:** `jsonb` or `null` if unauthenticated, no likes, unknown pack, or `p_pack_id` is not liked by the caller.
+
+```json
+{
+  "liked_pack": { "id": "uuid", "name": "Pack title" },
+  "similarities": [
+    {
+      "id": "uuid",
+      "name": "…",
+      "creator_id": "uuid",
+      "category_id": "uuid",
+      "creator_name": "…",
+      "category_name": "…",
+      "genres": ["…"],
+      "tags": ["…"],
+      "samples_count": 0,
+      "download_count": 0,
+      "status": "Published",
+      "cover_url": "…",
+      "created_at": "…",
+      "is_premium": false
+    }
+  ]
+}
+```
+
+**Example**
+
+```ts
+// Use the caller’s most recent liked pack as the seed
+const { data, error } = await supabase.rpc('get_similar_packs_by_liked_pack', {
+  p_limit: 6,
+});
+
+// Or pin a specific liked pack
+const { data, error } = await supabase.rpc('get_similar_packs_by_liked_pack', {
+  p_pack_id: likedPackId,
+  p_limit: 6,
+});
 ```
