@@ -375,7 +375,7 @@ export default function CreditRulesPage() {
                 </div>
 
                 {/* Full Pack Download */}
-                <div className="space-y-2">
+                {/* <div className="space-y-2">
                   <Label htmlFor="full_pack_download" className="flex items-center gap-2">
                     <Package className="h-4 w-4 text-muted-foreground" />
                     Full Pack Download
@@ -393,7 +393,7 @@ export default function CreditRulesPage() {
                   <p className="text-xs text-muted-foreground">
                     Credit cost for downloading entire pack
                   </p>
-                </div>
+                </div> */}
               </div>
             </CardContent>
           </Card>
