@@ -52,6 +52,12 @@ import {
   type AudioUploadResult,
 } from "@/lib/audio-upload";
 import { supabase } from "@/lib/supabase";
+import {
+  DEFAULT_CREDIT_RULES,
+  fetchCreditRulesFromSettings,
+  getCreditCostForSampleType,
+  type CreditRulesConfig,
+} from "@/lib/credit-rules";
 
 interface Creator {
   id: string;
@@ -152,6 +158,7 @@ export default function EditPackPage() {
   const [creators, setCreators] = useState<Creator[]>([]);
   const [genres, setGenres] = useState<Genre[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
+  const [creditRules, setCreditRules] = useState<CreditRulesConfig>(DEFAULT_CREDIT_RULES);
   const [isLoadingData, setIsLoadingData] = useState(true);
 
   // Dialog states
@@ -169,15 +176,17 @@ export default function EditPackPage() {
     async function loadReferenceData() {
       try {
         setIsLoadingData(true);
-        const [creatorsData, genresData, categoriesData] = await Promise.all([
+        const [creatorsData, genresData, categoriesData, loadedCreditRules] = await Promise.all([
           getCreators(),
           getGenres(),
           getCategories(),
+          fetchCreditRulesFromSettings(),
         ]);
 
         setCreators(creatorsData);
         setGenres(genresData);
         setCategories(categoriesData);
+        setCreditRules(loadedCreditRules);
       } catch (error) {
         console.error("Error loading reference data:", error);
       } finally {
@@ -346,7 +355,7 @@ export default function EditPackPage() {
       key: "",
       type: "Loop",
       length: "",
-      creditCost: "",
+      creditCost: String(getCreditCostForSampleType("Loop", creditRules)),
       hasStems: false,
       stemFiles: [],
       thumbnailFile: null,
@@ -376,7 +385,14 @@ export default function EditPackPage() {
     setExistingSamples((prev) =>
       prev.map((sample) =>
         sample.id === sampleId
-          ? { ...sample, [field]: value, isModified: true }
+          ? {
+              ...sample,
+              [field]: value,
+              ...(field === "type"
+                ? { credit_cost: getCreditCostForSampleType(value, creditRules) }
+                : {}),
+              isModified: true,
+            }
           : sample
       )
     );
@@ -385,7 +401,15 @@ export default function EditPackPage() {
   const handleUpdateNewSample = (sampleId: string, field: string, value: any) => {
     setNewSampleFiles((prev) =>
       prev.map((sample) =>
-        sample.id === sampleId ? { ...sample, [field]: value } : sample
+        sample.id === sampleId
+          ? {
+              ...sample,
+              [field]: value,
+              ...(field === "type"
+                ? { creditCost: String(getCreditCostForSampleType(value, creditRules)) }
+                : {}),
+            }
+          : sample
       )
     );
   };
@@ -408,7 +432,7 @@ export default function EditPackPage() {
           instrument: sample.instrument,
           type: sample.type,
           length: sample.length,
-          credit_cost: sample.credit_cost,
+          credit_cost: getCreditCostForSampleType(sample.type, creditRules),
           updated_at: new Date().toISOString(),
         })
         .eq("id", sample.id);
@@ -632,7 +656,7 @@ export default function EditPackPage() {
               instrument: sample.instrument,
               type: sample.type,
               length: sample.length,
-              credit_cost: sample.credit_cost,
+              credit_cost: getCreditCostForSampleType(sample.type, creditRules),
               updated_at: new Date().toISOString(),
             })
             .eq("id", sample.id);
@@ -707,7 +731,7 @@ export default function EditPackPage() {
               type: sample.type,
               length: sample.length || null,
               file_size_bytes: sample.file.size,
-              credit_cost: sample.creditCost ? parseInt(sample.creditCost) : null,
+              credit_cost: getCreditCostForSampleType(sample.type, creditRules),
               has_stems: sample.hasStems,
               status: "Active",
               metadata,
@@ -1251,37 +1275,12 @@ export default function EditPackPage() {
                         </DropdownMenu>
                       </div>
                       <div>
-                        <Label className="text-xs">Credit Cost</Label>
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button variant="outline" size="sm" className="w-full h-9 justify-start">
-                              {sample.credit_cost ?? "Select credit"}
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent>
-                            <DropdownMenuItem
-                              onClick={() =>
-                                handleUpdateExistingSample(sample.id, "credit_cost", 1)
-                              }
-                            >
-                              1
-                            </DropdownMenuItem>
-                            <DropdownMenuItem
-                              onClick={() =>
-                                handleUpdateExistingSample(sample.id, "credit_cost", 2)
-                              }
-                            >
-                              2
-                            </DropdownMenuItem>
-                            <DropdownMenuItem
-                              onClick={() =>
-                                handleUpdateExistingSample(sample.id, "credit_cost", 5)
-                              }
-                            >
-                              5
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
+                        <Label className="text-xs">Credit Cost (Rule-based)</Label>
+                        <Input
+                          value={getCreditCostForSampleType(sample.type, creditRules)}
+                          disabled
+                          className="h-9"
+                        />
                       </div>
                     </div>
                   )}

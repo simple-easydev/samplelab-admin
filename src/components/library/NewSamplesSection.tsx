@@ -281,14 +281,11 @@ function NewSampleRow({
           </DropdownMenu>
         </div>
         <div>
-          <Label className="text-xs">Credit Cost</Label>
+          <Label className="text-xs">Credit Cost (Rule-based)</Label>
           <Input
             value={sample.creditCost}
-            onChange={(e) =>
-              onUpdateNewSample(sample.id, "creditCost", e.target.value)
-            }
             placeholder="Auto"
-            disabled={isSubmitting}
+            disabled
             className="h-9"
           />
         </div>

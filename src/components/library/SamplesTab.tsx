@@ -36,7 +36,7 @@ interface Sample {
   key: string | null;
   type: "Loop" | "One-shot"; // NOTE: 'Stem' is NOT a type - stems are bundles attached to samples
   downloads: number;
-  creditCost: number | null;
+  creditCost: number;
   status: "Active" | "Disabled";
   hasStems: boolean; // Does this sample have stems bundle?
   stemsCount?: number; // Number of stem files (if hasStems = true)
@@ -529,7 +529,7 @@ export function SamplesTab({
                       <Badge variant="outline">{sample.type}</Badge>
                     </TableCell>
                     <TableCell className="text-right">
-                      {sample.creditCost == null ? "Auto" : sample.creditCost}
+                      {sample.creditCost}
                     </TableCell>
                     <TableCell>
                       {sample.hasStems ? (

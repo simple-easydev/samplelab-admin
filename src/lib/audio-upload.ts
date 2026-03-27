@@ -4,6 +4,10 @@
  */
 
 import { supabase } from "@/lib/supabase";
+import {
+  fetchCreditRulesFromSettings,
+  getCreditCostForSampleType,
+} from "@/lib/credit-rules";
 
 export interface UploadProgress {
   loaded: number;
@@ -406,6 +410,8 @@ export async function createPackWithSamples(
   }[]
 ): Promise<{ success: boolean; packId?: string; error?: string }> {
   try {
+    const creditRules = await fetchCreditRulesFromSettings();
+
     // 1. Create the pack
     const { data: pack, error: packError } = await supabase
       .from("packs")
@@ -459,7 +465,7 @@ export async function createPackWithSamples(
           type: sample.type,
           length: sample.length,
           file_size_bytes: sample.file_size_bytes,
-          credit_cost: sample.credit_cost,
+          credit_cost: getCreditCostForSampleType(sample.type, creditRules),
           has_stems: sample.has_stems,
           status: "Active",
         })

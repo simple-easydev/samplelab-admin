@@ -1,6 +1,10 @@
 import useSWR from "swr";
 import { supabase } from "@/lib/supabase";
 import type { User, Customer, AdminStats } from "@/types";
+import {
+  fetchCreditRulesFromSettings,
+  getCreditCostForSampleType,
+} from "@/lib/credit-rules";
 
 async function fetchAdminStats(): Promise<AdminStats> {
   const [
@@ -168,7 +172,7 @@ export interface AdminSample {
   instrument: string | null;
   type: "Loop" | "One-shot";
   downloads: number;
-  creditCost: number | null;
+  creditCost: number;
   status: "Active" | "Disabled";
   hasStems: boolean;
   stemsCount?: number;
@@ -178,7 +182,11 @@ export interface AdminSample {
 }
 
 async function fetchAllSamplesForAdmin(): Promise<AdminSample[]> {
-  const { data, error } = await supabase.rpc("get_all_samples");
+  const [rpcResult, creditRules] = await Promise.all([
+    supabase.rpc("get_all_samples"),
+    fetchCreditRulesFromSettings(),
+  ]);
+  const { data, error } = rpcResult;
   if (error) throw error;
   const rows = (data ?? []) as AdminSampleRow[];
   return rows.map((row) => ({
@@ -193,7 +201,7 @@ async function fetchAllSamplesForAdmin(): Promise<AdminSample[]> {
     instrument: row.instrument ?? null,
     type: row.type as "Loop" | "One-shot",
     downloads: row.download_count,
-    creditCost: row.credit_cost,
+    creditCost: getCreditCostForSampleType(row.type, creditRules),
     status: row.status as "Active" | "Disabled",
     hasStems: row.has_stems,
     stemsCount: row.stems_count,
