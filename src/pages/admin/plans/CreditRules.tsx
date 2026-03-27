@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { toast } from "sonner";
+import { supabase } from "@/lib/supabase";
 import {
   ScrollText,
   Loader2,
@@ -45,6 +46,14 @@ const DEFAULT_RULES: CreditRules = {
   allow_pack_overrides: true,
 };
 
+const CREDIT_RULE_SETTING_KEYS = {
+  loops_compositions: "credit_rules.loops_compositions",
+  one_shots: "credit_rules.one_shots",
+  stems: "credit_rules.stems",
+  full_pack_download: "credit_rules.full_pack_download",
+  allow_pack_overrides: "credit_rules.allow_pack_overrides",
+} as const;
+
 export default function CreditRulesPage() {
   const [rules, setRules] = useState<CreditRules>(DEFAULT_RULES);
   const [originalRules, setOriginalRules] = useState<CreditRules>(DEFAULT_RULES);
@@ -75,28 +84,46 @@ export default function CreditRulesPage() {
       setIsLoading(true);
       setError(null);
 
-      // TODO: Replace with actual database query
-      // const { data, error } = await supabase
-      //   .from("credit_rules")
-      //   .select("*")
-      //   .single();
+      const settingKeys = Object.values(CREDIT_RULE_SETTING_KEYS);
+      const { data, error } = await supabase
+        .from("app_settings")
+        .select("key, value")
+        .in("key", settingKeys);
 
-      // if (error) throw error;
+      if (error) throw error;
 
-      // Simulate API call
-      await new Promise((resolve) => setTimeout(resolve, 500));
+      const settingsMap = new Map<string, string>();
+      ((data as Array<{ key: string; value: string | null }> | null) || []).forEach((row) => {
+        settingsMap.set(row.key, row.value || "");
+      });
 
-      // For now, using mock data
-      const mockRules: CreditRules = {
-        loops_compositions: 2,
-        one_shots: 1,
-        stems: 5,
-        full_pack_download: 8,
-        allow_pack_overrides: true,
+      const loadedRules: CreditRules = {
+        loops_compositions: Number.parseInt(
+          settingsMap.get(CREDIT_RULE_SETTING_KEYS.loops_compositions) || "",
+          10
+        ) || DEFAULT_RULES.loops_compositions,
+        one_shots: Number.parseInt(
+          settingsMap.get(CREDIT_RULE_SETTING_KEYS.one_shots) || "",
+          10
+        ) || DEFAULT_RULES.one_shots,
+        stems: Number.parseInt(
+          settingsMap.get(CREDIT_RULE_SETTING_KEYS.stems) || "",
+          10
+        ) || DEFAULT_RULES.stems,
+        full_pack_download: Number.parseInt(
+          settingsMap.get(CREDIT_RULE_SETTING_KEYS.full_pack_download) || "",
+          10
+        ) || DEFAULT_RULES.full_pack_download,
+        allow_pack_overrides:
+          (settingsMap.get(CREDIT_RULE_SETTING_KEYS.allow_pack_overrides) ?? "").toLowerCase() === "true"
+            ? true
+            : (settingsMap.get(CREDIT_RULE_SETTING_KEYS.allow_pack_overrides) ?? "") === ""
+              ? DEFAULT_RULES.allow_pack_overrides
+              : false,
       };
 
-      setRules(mockRules);
-      setOriginalRules(mockRules);
+      setRules(loadedRules);
+      setOriginalRules(loadedRules);
     } catch (err: any) {
       console.error("Error fetching credit rules:", err);
       setError("Failed to load credit rules: " + err.message);
@@ -115,16 +142,51 @@ export default function CreditRulesPage() {
     try {
       setIsSaving(true);
 
-      // TODO: Add database update logic
-      // const { error } = await supabase
-      //   .from("credit_rules")
-      //   .update(rules)
-      //   .eq("id", "default");
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.user?.id) throw new Error("Not authenticated");
 
-      // if (error) throw error;
+      const updates = [
+        {
+          category: "plans",
+          key: CREDIT_RULE_SETTING_KEYS.loops_compositions,
+          value: String(rules.loops_compositions),
+          updated_by: session.user.id,
+          updated_at: new Date().toISOString(),
+        },
+        {
+          category: "plans",
+          key: CREDIT_RULE_SETTING_KEYS.one_shots,
+          value: String(rules.one_shots),
+          updated_by: session.user.id,
+          updated_at: new Date().toISOString(),
+        },
+        {
+          category: "plans",
+          key: CREDIT_RULE_SETTING_KEYS.stems,
+          value: String(rules.stems),
+          updated_by: session.user.id,
+          updated_at: new Date().toISOString(),
+        },
+        {
+          category: "plans",
+          key: CREDIT_RULE_SETTING_KEYS.full_pack_download,
+          value: String(rules.full_pack_download),
+          updated_by: session.user.id,
+          updated_at: new Date().toISOString(),
+        },
+        {
+          category: "plans",
+          key: CREDIT_RULE_SETTING_KEYS.allow_pack_overrides,
+          value: String(rules.allow_pack_overrides),
+          updated_by: session.user.id,
+          updated_at: new Date().toISOString(),
+        },
+      ];
 
-      // Simulate API call
-      await new Promise((resolve) => setTimeout(resolve, 500));
+      const { error } = await (supabase.from("app_settings") as any)
+        .upsert(updates, { onConflict: "key" });
+
+      if (error) throw error;
 
       setOriginalRules(rules);
       toast.success("Credit rules updated successfully", {
@@ -151,16 +213,51 @@ export default function CreditRulesPage() {
     try {
       setIsSaving(true);
 
-      // TODO: Add database update logic
-      // const { error } = await supabase
-      //   .from("credit_rules")
-      //   .update(DEFAULT_RULES)
-      //   .eq("id", "default");
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.user?.id) throw new Error("Not authenticated");
 
-      // if (error) throw error;
+      const resetUpdates = [
+        {
+          category: "plans",
+          key: CREDIT_RULE_SETTING_KEYS.loops_compositions,
+          value: String(DEFAULT_RULES.loops_compositions),
+          updated_by: session.user.id,
+          updated_at: new Date().toISOString(),
+        },
+        {
+          category: "plans",
+          key: CREDIT_RULE_SETTING_KEYS.one_shots,
+          value: String(DEFAULT_RULES.one_shots),
+          updated_by: session.user.id,
+          updated_at: new Date().toISOString(),
+        },
+        {
+          category: "plans",
+          key: CREDIT_RULE_SETTING_KEYS.stems,
+          value: String(DEFAULT_RULES.stems),
+          updated_by: session.user.id,
+          updated_at: new Date().toISOString(),
+        },
+        {
+          category: "plans",
+          key: CREDIT_RULE_SETTING_KEYS.full_pack_download,
+          value: String(DEFAULT_RULES.full_pack_download),
+          updated_by: session.user.id,
+          updated_at: new Date().toISOString(),
+        },
+        {
+          category: "plans",
+          key: CREDIT_RULE_SETTING_KEYS.allow_pack_overrides,
+          value: String(DEFAULT_RULES.allow_pack_overrides),
+          updated_by: session.user.id,
+          updated_at: new Date().toISOString(),
+        },
+      ];
 
-      // Simulate API call
-      await new Promise((resolve) => setTimeout(resolve, 500));
+      const { error } = await (supabase.from("app_settings") as any)
+        .upsert(resetUpdates, { onConflict: "key" });
+
+      if (error) throw error;
 
       setRules(DEFAULT_RULES);
       setOriginalRules(DEFAULT_RULES);
