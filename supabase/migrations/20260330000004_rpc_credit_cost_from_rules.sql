@@ -1,0 +1,379 @@
+-- Update RPC payloads to expose rule-derived credit_cost from app_settings
+-- instead of samples.credit_cost.
+
+CREATE OR REPLACE FUNCTION public.get_all_samples(
+  p_search      text DEFAULT NULL,
+  p_sort        text DEFAULT 'newest',
+  p_genres      text[] DEFAULT NULL,
+  p_keywords    text[] DEFAULT NULL,
+  p_instrument  text DEFAULT 'all',
+  p_type        text DEFAULT 'all',
+  p_stems       text DEFAULT 'all',
+  p_keys        text[] DEFAULT NULL,
+  p_key_quality text DEFAULT 'all',
+  p_bpm_min     int DEFAULT NULL,
+  p_bpm_max     int DEFAULT NULL,
+  p_bpm_exact   int DEFAULT NULL,
+  p_limit       int DEFAULT NULL,
+  p_offset      int DEFAULT 0
+)
+RETURNS TABLE (
+  id uuid,
+  name text,
+  preview_audio_url text,
+  pack_id uuid,
+  pack_name text,
+  creator_id uuid,
+  creator_name text,
+  genre text,
+  bpm integer,
+  key text,
+  instrument text,
+  type text,
+  download_count integer,
+  credit_cost integer,
+  status text,
+  has_stems boolean,
+  stems_count bigint,
+  created_at timestamptz,
+  metadata jsonb,
+  thumbnail_url text,
+  total_count bigint
+)
+LANGUAGE sql
+STABLE
+SECURITY INVOKER
+SET search_path = public
+AS $$
+  WITH base AS (
+    SELECT
+      s.id,
+      s.name,
+      COALESCE(s.preview_audio_url, s.audio_url) AS preview_audio_url,
+      p.id AS pack_id,
+      p.name AS pack_name,
+      p.creator_id AS creator_id,
+      COALESCE(cr.name, '')::text AS creator_name,
+      COALESCE(
+        (SELECT g.name
+         FROM pack_genres pg
+         JOIN genres g ON g.id = pg.genre_id
+         WHERE pg.pack_id = s.pack_id AND COALESCE(g.is_active, true) = true
+         LIMIT 1),
+        ''
+      )::text AS genre,
+      s.bpm,
+      s.key,
+      s.instrument,
+      s.type,
+      COALESCE(s.download_count, 0)::integer AS download_count,
+      COALESCE(
+        CASE
+          WHEN lower(COALESCE(s.type, '')) IN ('one-shot', 'one_shot', 'oneshot') THEN (
+            SELECT CASE
+              WHEN trim(a.value) ~ '^-?[0-9]+$' THEN trim(a.value)::integer
+              ELSE NULL
+            END
+            FROM public.app_settings a
+            WHERE a.key = 'credit_rules.one_shots'
+            LIMIT 1
+          )
+          ELSE (
+            SELECT CASE
+              WHEN trim(a.value) ~ '^-?[0-9]+$' THEN trim(a.value)::integer
+              ELSE NULL
+            END
+            FROM public.app_settings a
+            WHERE a.key = 'credit_rules.loops_compositions'
+            LIMIT 1
+          )
+        END,
+        CASE
+          WHEN lower(COALESCE(s.type, '')) IN ('one-shot', 'one_shot', 'oneshot') THEN 1
+          ELSE 2
+        END
+      )::integer AS credit_cost,
+      s.status,
+      COALESCE(s.has_stems, false) AS has_stems,
+      COALESCE(st.stem_count, 0)::bigint AS stems_count,
+      s.created_at,
+      s.metadata,
+      s.thumbnail_url
+    FROM samples s
+    JOIN packs p ON p.id = s.pack_id
+    LEFT JOIN creators cr ON cr.id = p.creator_id
+    LEFT JOIN (
+      SELECT sample_id, COUNT(*) AS stem_count
+      FROM stems
+      GROUP BY sample_id
+    ) st ON st.sample_id = s.id
+    WHERE
+      (p_search IS NULL OR trim(p_search) = ''
+       OR s.name ILIKE '%' || trim(p_search) || '%'
+       OR p.name ILIKE '%' || trim(p_search) || '%'
+       OR cr.name ILIKE '%' || trim(p_search) || '%')
+      AND (p_genres IS NULL OR cardinality(p_genres) = 0 OR EXISTS (
+        SELECT 1 FROM pack_genres pg
+        JOIN genres g ON g.id = pg.genre_id
+        WHERE pg.pack_id = s.pack_id AND COALESCE(g.is_active, true) = true AND g.name = ANY(p_genres)
+      ))
+      AND (p_keywords IS NULL OR cardinality(p_keywords) = 0 OR p.tags && p_keywords)
+      AND (
+        p_instrument IS NULL
+        OR trim(lower(p_instrument)) = 'all'
+        OR (
+          trim(p_instrument) <> ''
+          AND EXISTS (
+            SELECT 1
+            FROM (
+              SELECT COALESCE(
+                NULLIF(trim(s.instrument), ''),
+                NULLIF(trim(s.metadata->>'instrument'), ''),
+                NULLIF(trim(s.metadata->>'Instrument'), ''),
+                (
+                  SELECT NULLIF(trim(v), '')
+                  FROM jsonb_each_text(
+                    CASE
+                      WHEN s.metadata IS NULL THEN '{}'::jsonb
+                      WHEN jsonb_typeof(s.metadata) <> 'object' THEN '{}'::jsonb
+                      ELSE s.metadata
+                    END
+                  ) t(k, v)
+                  WHERE lower(k) = 'instrument'
+                  LIMIT 1
+                )
+              ) AS eff
+            ) x
+            WHERE x.eff IS NOT NULL
+              AND (
+                trim(x.eff) ILIKE '%' || trim(p_instrument) || '%'
+                OR trim(p_instrument) ILIKE '%' || trim(x.eff) || '%'
+              )
+          )
+        )
+      )
+      AND (p_type = 'all' OR p_type IS NULL
+           OR (lower(p_type) = 'loop' AND s.type = 'Loop')
+           OR (lower(p_type) = 'one-shot' AND s.type = 'One-shot'))
+      AND (p_stems = 'all' OR p_stems IS NULL
+           OR (p_stems = 'yes' AND COALESCE(s.has_stems, false) = true)
+           OR (p_stems = 'no' AND COALESCE(s.has_stems, false) = false))
+      AND (
+        p_keys IS NULL OR cardinality(p_keys) = 0
+        OR (
+          s.key IS NOT NULL
+          AND EXISTS (
+            SELECT 1
+            FROM (SELECT unnest(p_keys) AS kt) q
+            WHERE trim(q.kt) <> ''
+              AND (
+                lower(trim(s.key)) = lower(trim(q.kt))
+                OR lower(trim(s.key)) LIKE lower(trim(q.kt)) || ' %'
+              )
+          )
+        )
+      )
+      AND (
+        p_key_quality IS NULL
+        OR trim(lower(p_key_quality)) = 'all'
+        OR trim(lower(p_key_quality)) NOT IN ('major', 'minor')
+        OR (
+          s.key IS NOT NULL
+          AND (
+            (trim(lower(p_key_quality)) = 'major' AND right(lower(trim(s.key)), 6) = ' major')
+            OR (trim(lower(p_key_quality)) = 'minor' AND right(lower(trim(s.key)), 6) = ' minor')
+          )
+        )
+      )
+      AND (
+        (p_bpm_exact IS NOT NULL AND s.bpm = p_bpm_exact)
+        OR (p_bpm_exact IS NULL AND
+            (p_bpm_min IS NULL OR p_bpm_min <= 0 OR (s.bpm IS NOT NULL AND s.bpm >= p_bpm_min))
+            AND (
+              p_bpm_max IS NULL
+              OR (s.bpm IS NOT NULL AND s.bpm <= p_bpm_max)
+              OR (s.bpm IS NULL AND (p_bpm_min IS NULL OR p_bpm_min <= 0))
+            ))
+      )
+  ),
+  counted AS (
+    SELECT *, (SELECT COUNT(*)::bigint FROM base) AS total_count
+    FROM base
+  )
+  SELECT
+    c.id,
+    c.name,
+    c.preview_audio_url,
+    c.pack_id,
+    c.pack_name,
+    c.creator_id,
+    c.creator_name,
+    c.genre,
+    c.bpm,
+    c.key,
+    c.instrument,
+    c.type,
+    c.download_count,
+    c.credit_cost,
+    c.status,
+    c.has_stems,
+    c.stems_count,
+    c.created_at,
+    c.metadata,
+    c.thumbnail_url,
+    c.total_count
+  FROM counted c
+  ORDER BY
+    CASE WHEN p_sort = 'newest' THEN c.created_at END DESC NULLS LAST,
+    CASE WHEN p_sort = 'oldest' THEN c.created_at END ASC NULLS LAST,
+    CASE WHEN p_sort = 'popular' THEN c.download_count END DESC NULLS LAST,
+    CASE WHEN p_sort = 'name-az' THEN c.name END ASC NULLS LAST,
+    CASE WHEN p_sort = 'name-za' THEN c.name END DESC NULLS LAST,
+    c.created_at DESC NULLS LAST,
+    c.name ASC
+  LIMIT p_limit
+  OFFSET GREATEST(0, COALESCE(p_offset, 0));
+$$;
+
+COMMENT ON FUNCTION public.get_all_samples(
+  text, text, text[], text[], text, text, text, text[], text,
+  integer, integer, integer, integer, integer
+) IS
+  'Samples list with filters; credit_cost is derived from app_settings credit_rules by sample type.';
+
+
+CREATE OR REPLACE FUNCTION public.get_similar_samples_by_downloaded_sample(
+  p_limit integer DEFAULT 24
+)
+RETURNS jsonb
+LANGUAGE plpgsql
+STABLE
+SECURITY INVOKER
+SET search_path = public
+AS $$
+DECLARE
+  v_user_id uuid;
+  v_seed_sample_id uuid;
+  v_seed_sample_name text;
+  v_pack_id uuid;
+  v_limit integer;
+  v_similar jsonb;
+BEGIN
+  v_user_id := auth.uid();
+  IF v_user_id IS NULL THEN
+    RETURN NULL;
+  END IF;
+
+  v_limit := GREATEST(1, LEAST(COALESCE(p_limit, 24), 100));
+
+  SELECT ca.sample_id
+  INTO v_seed_sample_id
+  FROM public.credit_activity ca
+  JOIN public.customers c ON c.id = ca.customer_id
+  WHERE c.user_id = v_user_id
+    AND ca.activity_type = 'download_charge'
+    AND ca.sample_id IS NOT NULL
+  ORDER BY ca.created_at DESC
+  LIMIT 1;
+
+  IF v_seed_sample_id IS NULL THEN
+    RETURN NULL;
+  END IF;
+
+  SELECT s.pack_id, s.name
+  INTO v_pack_id, v_seed_sample_name
+  FROM public.samples s
+  WHERE s.id = v_seed_sample_id;
+
+  IF v_pack_id IS NULL THEN
+    RETURN NULL;
+  END IF;
+
+  SELECT COALESCE(
+    jsonb_agg(to_jsonb(t) ORDER BY t.created_at DESC NULLS LAST),
+    '[]'::jsonb
+  )
+  INTO v_similar
+  FROM (
+    SELECT
+      s2.id,
+      s2.name,
+      COALESCE(s2.preview_audio_url, s2.audio_url)::text AS preview_audio_url,
+      p.id AS pack_id,
+      p.name AS pack_name,
+      p.creator_id,
+      COALESCE(cr.name, '')::text AS creator_name,
+      COALESCE(
+        (SELECT g.name
+         FROM public.pack_genres pg
+         JOIN public.genres g ON g.id = pg.genre_id
+         WHERE pg.pack_id = p.id AND COALESCE(g.is_active, true) = true
+         LIMIT 1),
+        ''
+      )::text AS genre,
+      s2.bpm,
+      s2.key,
+      s2.type,
+      COALESCE(s2.download_count, 0)::integer AS download_count,
+      s2.status,
+      COALESCE(s2.has_stems, false) AS has_stems,
+      COALESCE(st.stem_count, 0)::bigint AS stems_count,
+      s2.created_at,
+      s2.metadata,
+      s2.thumbnail_url,
+      COALESCE(
+        CASE
+          WHEN lower(COALESCE(s2.type, '')) IN ('one-shot', 'one_shot', 'oneshot') THEN (
+            SELECT CASE
+              WHEN trim(a.value) ~ '^-?[0-9]+$' THEN trim(a.value)::integer
+              ELSE NULL
+            END
+            FROM public.app_settings a
+            WHERE a.key = 'credit_rules.one_shots'
+            LIMIT 1
+          )
+          ELSE (
+            SELECT CASE
+              WHEN trim(a.value) ~ '^-?[0-9]+$' THEN trim(a.value)::integer
+              ELSE NULL
+            END
+            FROM public.app_settings a
+            WHERE a.key = 'credit_rules.loops_compositions'
+            LIMIT 1
+          )
+        END,
+        CASE
+          WHEN lower(COALESCE(s2.type, '')) IN ('one-shot', 'one_shot', 'oneshot') THEN 1
+          ELSE 2
+        END
+      )::integer AS credit_cost
+    FROM public.samples s2
+    JOIN public.packs p ON p.id = s2.pack_id
+    LEFT JOIN public.creators cr ON cr.id = p.creator_id
+    LEFT JOIN (
+      SELECT sample_id, COUNT(*) AS stem_count
+      FROM public.stems
+      GROUP BY sample_id
+    ) st ON st.sample_id = s2.id
+    WHERE s2.pack_id = v_pack_id
+      AND s2.id <> v_seed_sample_id
+      AND s2.status = 'Active'
+      AND p.status = 'Published'
+    ORDER BY s2.created_at DESC NULLS LAST
+    LIMIT v_limit
+  ) t;
+
+  RETURN jsonb_build_object(
+    'seed_sample',
+    jsonb_build_object(
+      'id', v_seed_sample_id,
+      'name', v_seed_sample_name
+    ),
+    'similarities',
+    COALESCE(v_similar, '[]'::jsonb)
+  );
+END;
+$$;
+
+COMMENT ON FUNCTION public.get_similar_samples_by_downloaded_sample(integer) IS
+  'Returns similar samples payload; credit_cost is derived from app_settings credit_rules by sample type.';

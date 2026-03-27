@@ -24,12 +24,26 @@ export const CREDIT_RULE_SETTING_KEYS = {
   allow_pack_overrides: "credit_rules.allow_pack_overrides",
 } as const;
 
+/** Matches DB helpers is_one_shot_sample_type / is_loop_sample_type (hyphens, spaces, plural). */
+function compactSampleTypeLabel(sampleType: string): string {
+  return sampleType.trim().toLowerCase().replace(/[^a-z0-9]/g, "");
+}
+
+export function isOneShotSampleType(sampleType: string): boolean {
+  const c = compactSampleTypeLabel(sampleType);
+  return c === "oneshot" || c === "oneshots";
+}
+
+export function isLoopSampleType(sampleType: string): boolean {
+  const c = compactSampleTypeLabel(sampleType);
+  return c === "loop" || c === "loops";
+}
+
 export function getCreditCostForSampleType(
   sampleType: string,
   rules: CreditRulesConfig = DEFAULT_CREDIT_RULES
 ): number {
-  const normalized = sampleType.trim().toLowerCase();
-  if (normalized === "one-shot" || normalized === "one_shot" || normalized === "oneshot") {
+  if (isOneShotSampleType(sampleType)) {
     return rules.one_shots;
   }
   return rules.loops_compositions;
