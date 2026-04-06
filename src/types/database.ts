@@ -37,6 +37,7 @@ export interface Database {
           created_at?: string;
           updated_at?: string;
         };
+        Relationships: [];
       };
       admin_invites: {
         Row: {
@@ -69,6 +70,7 @@ export interface Database {
           used?: boolean;
           created_at?: string;
         };
+        Relationships: [];
       };
       customers: {
         Row: {
@@ -110,6 +112,7 @@ export interface Database {
           created_at?: string;
           updated_at?: string;
         };
+        Relationships: [];
       };
       samples: {
         Row: {
@@ -142,6 +145,7 @@ export interface Database {
           created_at?: string;
           updated_at?: string;
         };
+        Relationships: [];
       };
       subscriptions: {
         Row: {
@@ -198,6 +202,7 @@ export interface Database {
           trial_start?: string | null;
           trial_end?: string | null;
         };
+        Relationships: [];
       };
       plan_tiers: {
         Row: {
@@ -251,6 +256,64 @@ export interface Database {
           created_at?: string;
           updated_at?: string;
         };
+        Relationships: [];
+      };
+      credit_activity: {
+        Row: {
+          id: string;
+          customer_id: string;
+          user_id: string | null;
+          delta: number;
+          balance_before: number;
+          balance_after: number;
+          activity_type: string;
+          source_type: string;
+          source_ref: string | null;
+          note: string | null;
+          metadata: Json;
+          sample_id: string | null;
+          subscription_id: string | null;
+          actor_user_id: string | null;
+          idempotency_key: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          customer_id: string;
+          user_id?: string | null;
+          delta: number;
+          balance_before: number;
+          balance_after: number;
+          activity_type: string;
+          source_type: string;
+          source_ref?: string | null;
+          note?: string | null;
+          metadata?: Json;
+          sample_id?: string | null;
+          subscription_id?: string | null;
+          actor_user_id?: string | null;
+          idempotency_key?: string | null;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          customer_id?: string;
+          user_id?: string | null;
+          delta?: number;
+          balance_before?: number;
+          balance_after?: number;
+          activity_type?: string;
+          source_type?: string;
+          source_ref?: string | null;
+          note?: string | null;
+          metadata?: Json;
+          sample_id?: string | null;
+          subscription_id?: string | null;
+          actor_user_id?: string | null;
+          idempotency_key?: string | null;
+          created_at?: string;
+        };
+        Relationships: [];
       };
     };
     Views: { [_ in never]: never };

@@ -13,6 +13,7 @@ import {
   Loader2,
   AlertCircle,
   User,
+  Coins,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -50,11 +51,23 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { supabase } from "@/lib/supabase";
 
 interface User {
   id: string;
+  /** `customers.user_id` (auth user); for credit ledger rows. */
+  auth_user_id: string | null;
   name: string;
   email: string;
   avatar_url: string | null;
@@ -88,6 +101,10 @@ export default function UsersPage() {
   // Dialog states
   const [showDisableDialog, setShowDisableDialog] = useState(false);
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
+  const [showAdjustCreditsDialog, setShowAdjustCreditsDialog] = useState(false);
+  const [creditDialogUser, setCreditDialogUser] = useState<User | null>(null);
+  const [adjustmentAmount, setAdjustmentAmount] = useState("");
+  const [adjustmentReason, setAdjustmentReason] = useState("");
   const [isUpdating, setIsUpdating] = useState(false);
 
   // Fetch users from Supabase
@@ -104,6 +121,7 @@ export default function UsersPage() {
         .from("customers")
         .select(`
           id,
+          user_id,
           email,
           name,
           subscription_tier,
@@ -137,6 +155,7 @@ export default function UsersPage() {
 
         return {
           id: c.id,
+          auth_user_id: c.user_id ?? null,
           name: c.name ?? c.email ?? "",
           email: c.email,
           avatar_url: null,
@@ -228,6 +247,109 @@ export default function UsersPage() {
   // Handle view user
   const handleViewUser = (user: User) => {
     navigate(`/admin/users/${user.id}`);
+  };
+
+  /** Updates `customers.credit_balance` and appends `credit_activity` (rolls back balance if ledger insert fails). */
+  const applyCreditAdjustment = async (
+    customerId: string,
+    authUserId: string | null,
+    delta: number,
+    reason: string
+  ): Promise<number> => {
+    const { data: customer, error: fetchErr } = await supabase
+      .from("customers")
+      .select("credit_balance, user_id")
+      .eq("id", customerId)
+      .single();
+    if (fetchErr) throw fetchErr;
+
+    const balanceBefore = customer.credit_balance ?? 0;
+    const balanceAfter = balanceBefore + delta;
+    if (balanceAfter < 0) {
+      throw new Error("Cannot adjust credits below 0");
+    }
+
+    const { data: authData } = await supabase.auth.getUser();
+    const actorId = authData.user?.id ?? null;
+    const now = new Date().toISOString();
+
+    const { error: updErr } = await supabase
+      .from("customers")
+      .update({ credit_balance: balanceAfter, updated_at: now })
+      .eq("id", customerId);
+    if (updErr) throw updErr;
+
+    const ledgerUserId = customer.user_id ?? authUserId;
+    const { error: ledgerErr } = await supabase.from("credit_activity").insert({
+      customer_id: customerId,
+      user_id: ledgerUserId,
+      delta,
+      balance_before: balanceBefore,
+      balance_after: balanceAfter,
+      activity_type: "manual_adjustment",
+      source_type: "admin",
+      note: reason,
+      actor_user_id: actorId,
+      metadata: { source: "admin_users_list" },
+    });
+
+    if (ledgerErr) {
+      await supabase
+        .from("customers")
+        .update({ credit_balance: balanceBefore, updated_at: new Date().toISOString() })
+        .eq("id", customerId);
+      throw ledgerErr;
+    }
+
+    return balanceAfter;
+  };
+
+  const handleAdjustCredits = (user: User) => {
+    setCreditDialogUser(user);
+    setAdjustmentAmount("");
+    setAdjustmentReason("");
+    setShowAdjustCreditsDialog(true);
+  };
+
+  const confirmAdjustCredits = async () => {
+    if (!creditDialogUser || !adjustmentReason.trim()) {
+      toast.error("Please enter an amount and a reason");
+      return;
+    }
+    const raw = adjustmentAmount.trim().replace(/\s/g, "");
+    const delta = Number(raw);
+    if (!Number.isFinite(delta) || delta === 0 || !Number.isInteger(delta)) {
+      toast.error("Please enter a valid non-zero whole number (e.g. +50 or -20)");
+      return;
+    }
+
+    try {
+      setIsUpdating(true);
+      const newBalance = await applyCreditAdjustment(
+        creditDialogUser.id,
+        creditDialogUser.auth_user_id,
+        delta,
+        adjustmentReason.trim()
+      );
+      setUsers((prev) =>
+        prev.map((u) =>
+          u.id === creditDialogUser.id ? { ...u, credits_remaining: newBalance } : u
+        )
+      );
+      toast.success(`Credits ${delta > 0 ? "added" : "removed"}`, {
+        description: `${Math.abs(delta)} credits ${delta > 0 ? "added to" : "removed from"} ${creditDialogUser.name}'s account.`,
+      });
+      setShowAdjustCreditsDialog(false);
+      setCreditDialogUser(null);
+      setAdjustmentAmount("");
+      setAdjustmentReason("");
+    } catch (err: unknown) {
+      console.error("Error adjusting credits:", err);
+      const message = err instanceof Error ? err.message : "Failed to adjust credits";
+      toast.error(message);
+    } finally {
+      setIsUpdating(false);
+    }
   };
 
   // Handle disable user
@@ -479,6 +601,10 @@ export default function UsersPage() {
                               <Eye className="h-4 w-4 mr-2" />
                               View User
                             </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => handleAdjustCredits(user)}>
+                              <Coins className="h-4 w-4 mr-2" />
+                              Adjust credits
+                            </DropdownMenuItem>
                             <DropdownMenuItem onClick={() => handleDisableUser(user)}>
                               {user.is_active ? (
                                 <>
@@ -565,6 +691,110 @@ export default function UsersPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <Dialog
+        open={showAdjustCreditsDialog}
+        onOpenChange={(open) => {
+          setShowAdjustCreditsDialog(open);
+          if (!open) {
+            setCreditDialogUser(null);
+            setAdjustmentAmount("");
+            setAdjustmentReason("");
+          }
+        }}
+      >
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Adjust credits</DialogTitle>
+            <DialogDescription>
+              Add or remove credits for{" "}
+              <strong>{creditDialogUser?.name ?? "this user"}</strong>. This updates their
+              balance and records a manual adjustment in the credit ledger.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div className="space-y-2">
+              <Label htmlFor="users-adjust-amount">Amount (+ to add, - to remove)</Label>
+              <Input
+                id="users-adjust-amount"
+                type="text"
+                placeholder="e.g. +50 or -20"
+                value={adjustmentAmount}
+                onChange={(e) => setAdjustmentAmount(e.target.value)}
+                disabled={isUpdating}
+              />
+              <p className="text-xs text-muted-foreground">
+                Use a signed whole number; the balance cannot go below zero.
+              </p>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="users-adjust-reason">Reason</Label>
+              <Textarea
+                id="users-adjust-reason"
+                placeholder="e.g. Compensation for a support issue, test credits, goodwill adjustment"
+                value={adjustmentReason}
+                onChange={(e) => setAdjustmentReason(e.target.value)}
+                rows={3}
+                disabled={isUpdating}
+              />
+            </div>
+            <Alert className="bg-yellow-100 border-yellow-300 dark:bg-yellow-900/20 dark:border-yellow-700">
+              <AlertDescription className="text-sm">
+                Manual adjustments do not charge or refund through Stripe—only the in-app
+                credit balance changes.
+              </AlertDescription>
+            </Alert>
+            {creditDialogUser && adjustmentAmount.trim() !== "" && (
+              <Alert>
+                <AlertCircle className="h-4 w-4" />
+                <AlertDescription>
+                  {(() => {
+                    const raw = adjustmentAmount.trim().replace(/\s/g, "");
+                    const delta = Number(raw);
+                    if (!Number.isFinite(delta) || !Number.isInteger(delta)) {
+                      return <>Enter a whole number amount.</>;
+                    }
+                    if (delta === 0) {
+                      return <>Enter a non-zero amount.</>;
+                    }
+                    if (creditDialogUser.credits_remaining + delta < 0) {
+                      return <>Resulting balance would be below zero.</>;
+                    }
+                    return (
+                      <>
+                        New balance:{" "}
+                        <strong>
+                          {creditDialogUser.credits_remaining + delta}
+                        </strong>{" "}
+                        credits (was {creditDialogUser.credits_remaining}).
+                      </>
+                    );
+                  })()}
+                </AlertDescription>
+              </Alert>
+            )}
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setShowAdjustCreditsDialog(false)}
+              disabled={isUpdating}
+            >
+              Cancel
+            </Button>
+            <Button onClick={confirmAdjustCredits} disabled={isUpdating}>
+              {isUpdating ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Saving…
+                </>
+              ) : (
+                "Apply adjustment"
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </>
   );
 }
