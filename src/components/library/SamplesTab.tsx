@@ -533,10 +533,10 @@ export function SamplesTab({
                     </TableCell>
                     <TableCell>
                       {sample.hasStems ? (
-                        <Badge variant="secondary" className="gap-1">
-                          <Music className="h-3 w-3" />
-                          {sample.stemsCount || 0} files
-                        </Badge>
+                        <div className="flex items-center gap-1">
+                          <Music className="h-3 w-3 text-muted-foreground" />
+                          <Check className="h-4 w-4 text-green-600" aria-label="has_stems" />
+                        </div>
                       ) : (
                         <span className="text-muted-foreground text-xs">—</span>
                       )}
