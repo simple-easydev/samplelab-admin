@@ -102,8 +102,19 @@ type PrepareRow = {
   bucket?: string;
   audio_url?: string;
   sample_name?: string;
+  has_stems?: boolean;
   credits_charged?: number;
 };
+
+function dirname(path: string): string {
+  const i = path.lastIndexOf("/");
+  return i === -1 ? "" : path.slice(0, i);
+}
+
+function stemsZipPathFromAudioObjectPath(audioObjectPath: string): string {
+  const dir = dirname(audioObjectPath);
+  return dir ? `${dir}/full.zip` : "full.zip";
+}
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -218,18 +229,21 @@ Deno.serve(async (req) => {
   }
 
   const { bucket, path: objectPath } = resolved;
+  const targetObjectPath = row.has_stems === true
+    ? stemsZipPathFromAudioObjectPath(objectPath)
+    : objectPath;
 
   const ttl = Number(Deno.env.get("SAMPLE_DOWNLOAD_URL_TTL_SEC") ?? DEFAULT_TTL_SEC);
-  const filename = downloadFilename(row.sample_name ?? "sample", objectPath);
+  const filename = downloadFilename(row.sample_name ?? "sample", targetObjectPath);
 
   const { data: signed, error: signError } = await admin.storage
     .from(bucket)
-    .createSignedUrl(objectPath, ttl, { download: filename });
+    .createSignedUrl(targetObjectPath, ttl, { download: filename });
 
   if (signError || !signed?.signedUrl) {
     console.error("createSignedUrl failed", {
       bucket,
-      objectPath,
+      objectPath: targetObjectPath,
       audioUrlPrefix: audioUrl.slice(0, 120),
       signError,
     });
