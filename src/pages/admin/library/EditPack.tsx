@@ -516,19 +516,27 @@ export default function EditPackPage() {
   const validateForm = () => {
     setValidationError(null);
     if (!formData.name.trim()) {
-      setValidationError("Please enter a pack name");
+      const msg = "Please enter a pack name";
+      setValidationError(msg);
+      toast.error(msg);
       return false;
     }
     if (!formData.creator) {
-      setValidationError("Please select a creator");
+      const msg = "Please select a creator";
+      setValidationError(msg);
+      toast.error(msg);
       return false;
     }
     if (!formData.category) {
-      setValidationError("Please select a category");
+      const msg = "Please select a category";
+      setValidationError(msg);
+      toast.error(msg);
       return false;
     }
     if (formData.genres.length === 0) {
-      setValidationError("Please select at least one genre");
+      const msg = "Please select at least one genre";
+      setValidationError(msg);
+      toast.error(msg);
       return false;
     }
     return true;
