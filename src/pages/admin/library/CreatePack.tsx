@@ -209,7 +209,7 @@ export default function CreatePackPage() {
       let coverUrl = "";
       if (coverFile) {
         updateProgress("Cover", "Uploading cover image...", 1, 1);
-        const coverResult = await uploadPackCover(coverFile);
+        const coverResult = await uploadPackCover(coverFile, formData.name);
         if (!coverResult.success) {
           throw new Error(`Cover upload failed: ${coverResult.error}`);
         }

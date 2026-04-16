@@ -22,6 +22,15 @@ export interface AudioUploadResult {
   error?: string;
 }
 
+function slugifyPackTitle(title: string): string {
+  return title
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .replace(/-{2,}/g, "-");
+}
+
 /**
  * Upload an avatar/image file to Supabase Storage
  * @param file The image file to upload
@@ -172,9 +181,13 @@ export async function uploadMultipleAudioFiles(
 /**
  * Upload a pack cover image
  * @param file The image file
+ * @param packTitle The pack title used for the storage folder
  * @returns Upload result with URL or error
  */
-export async function uploadPackCover(file: File): Promise<AudioUploadResult> {
+export async function uploadPackCover(
+  file: File,
+  packTitle: string
+): Promise<AudioUploadResult> {
   try {
     // Validate file type
     const validTypes = ["image/jpeg", "image/jpg", "image/png", "image/webp"];
@@ -194,16 +207,20 @@ export async function uploadPackCover(file: File): Promise<AudioUploadResult> {
       };
     }
 
-    // Generate unique filename
-    const timestamp = Date.now();
-    const randomString = Math.random().toString(36).substring(2, 15);
-    const fileExt = file.name.split(".").pop();
-    const fileName = `${timestamp}-${randomString}.${fileExt}`;
-    const filePath = `covers/${fileName}`;
+    const packSlug = slugifyPackTitle(packTitle);
+    if (!packSlug) {
+      return {
+        success: false,
+        error: "Pack title is required before uploading a cover image.",
+      };
+    }
+
+    const originalFileName = file.name.trim() || "cover";
+    const filePath = `${packSlug}/cover/${originalFileName}`;
 
     // Upload to Supabase Storage
     const { data, error } = await supabase.storage
-      .from("pack-covers")
+      .from("preview-audios")
       .upload(filePath, file, {
         cacheControl: "3600",
         upsert: false,
@@ -219,7 +236,7 @@ export async function uploadPackCover(file: File): Promise<AudioUploadResult> {
 
     // Get public URL
     const { data: urlData } = supabase.storage
-      .from("pack-covers")
+      .from("preview-audios")
       .getPublicUrl(filePath);
 
     return {

@@ -567,7 +567,7 @@ export default function EditPackPage() {
           message: "Uploading cover image...",
         });
 
-        const coverResult = await uploadPackCover(coverFile);
+        const coverResult = await uploadPackCover(coverFile, formData.name);
         if (!coverResult.success) {
           throw new Error(coverResult.error || "Failed to upload cover");
         }
