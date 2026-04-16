@@ -30,7 +30,6 @@ import {
   DropdownMenuTrigger,
   DropdownMenuCheckboxItem,
 } from "@/components/ui/dropdown-menu";
-import { NewSamplesSection } from "@/components/library/NewSamplesSection";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -42,14 +41,10 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import {
-  uploadAudioFile,
   uploadPackCover,
-  uploadMultipleAudioFiles,
-  uploadSampleThumbnail,
   getCreators,
   getGenres,
   getCategories,
-  type AudioUploadResult,
 } from "@/lib/audio-upload";
 import { supabase } from "@/lib/supabase";
 import {
@@ -668,99 +663,6 @@ export default function EditPackPage() {
               updated_at: new Date().toISOString(),
             })
             .eq("id", sample.id);
-        }
-      }
-
-      // 6. Upload and add new samples
-      if (newSampleFiles.length > 0) {
-        setUploadProgress({
-          step: "Uploading new samples",
-          current: 60,
-          total: 100,
-          percentage: 60,
-          message: `Uploading ${newSampleFiles.length} new sample(s)...`,
-        });
-
-        for (let i = 0; i < newSampleFiles.length; i++) {
-          const sample = newSampleFiles[i];
-
-          setUploadProgress({
-            step: "Uploading sample",
-            current: 60 + (i / newSampleFiles.length) * 30,
-            total: 100,
-            percentage: 60 + (i / newSampleFiles.length) * 30,
-            message: `Uploading ${sample.name}...`,
-          });
-
-          // Upload main audio file
-          const audioResult = await uploadAudioFile(sample.file, "samples");
-          if (!audioResult.success) {
-            throw new Error(`Failed to upload ${sample.name}: ${audioResult.error}`);
-          }
-
-          // Upload stems if present
-          let stemResults: AudioUploadResult[] = [];
-          if (sample.hasStems && sample.stemFiles.length > 0) {
-            stemResults = await uploadMultipleAudioFiles(sample.stemFiles, "stems");
-            const failedStems = stemResults.filter((r) => !r.success);
-            if (failedStems.length > 0) {
-              throw new Error(`Failed to upload stems for ${sample.name}`);
-            }
-          }
-
-          // Upload thumbnail if present
-          let thumbnailUrl: string | null = null;
-          if (sample.thumbnailFile) {
-            const thumbResult = await uploadSampleThumbnail(sample.thumbnailFile);
-            if (thumbResult.success && thumbResult.url) {
-              thumbnailUrl = thumbResult.url;
-            }
-          }
-
-          // Build metadata from waveform (bars + duration) when available
-          const waveformMeta = newSampleWaveformMeta[sample.id];
-          const metadata =
-            waveformMeta ?
-              {
-                bars: waveformMeta.bars,
-                duration_seconds: waveformMeta.durationSeconds,
-              }
-            : null;
-
-          // Insert sample into database
-          const { data: sampleData, error: sampleError } = await supabase
-            .from("samples")
-            .insert({
-              pack_id: id,
-              name: sample.name,
-              audio_url: audioResult.url!,
-              bpm: sample.bpm ? parseInt(sample.bpm) : null,
-              key: sample.key || null,
-              type: sample.type,
-              length: sample.length || null,
-              file_size_bytes: sample.file.size,
-              credit_cost: getCreditCostForSampleType(sample.type, creditRules),
-              has_stems: sample.hasStems,
-              status: "Active",
-              metadata,
-              thumbnail_url: thumbnailUrl,
-            })
-            .select()
-            .single();
-
-          if (sampleError) throw sampleError;
-
-          // Insert stems if present
-          if (sample.hasStems && stemResults.length > 0 && sampleData) {
-            const stemInserts = stemResults.map((stemResult, idx) => ({
-              sample_id: sampleData.id,
-              name: sample.stemFiles[idx].name,
-              audio_url: stemResult.url!,
-              file_size_bytes: sample.stemFiles[idx].size,
-            }));
-
-            await supabase.from("stems").insert(stemInserts);
-          }
         }
       }
 
