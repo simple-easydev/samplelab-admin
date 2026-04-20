@@ -151,6 +151,12 @@ verify_jwt = false
 [functions.request-sample-download]
 verify_jwt = false
 
+[functions.create-stripe-billing-portal-session]
+verify_jwt = false
+
+[functions.delete-stripe-payment-method]
+verify_jwt = false
+
 [analytics]
 enabled = false
 port = 54327
