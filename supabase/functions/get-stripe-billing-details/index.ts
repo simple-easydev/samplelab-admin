@@ -326,13 +326,6 @@ Deno.serve(async (req) => {
       {
         success: true,
         stripeCustomerId,
-        diagnostics: {
-          defaultPaymentMethodId,
-          defaultPaymentMethodDetails,
-          paymentMethodsListCount: paymentMethods.data.length,
-          customerListPaymentMethodsCount: customerPaymentMethods.data.length,
-          mergedCardCount: cards.length,
-        },
         paymentMethods: cards,
         transactions: merged.slice(0, limit),
       },
