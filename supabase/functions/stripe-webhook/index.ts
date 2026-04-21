@@ -9,6 +9,9 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type, stripe-signature",
 };
 
+/** Credits granted once when a user starts a subscription in Stripe trial (`trialing`). */
+const TRIAL_START_CREDITS = 5;
+
 function jsonResponse(body: object, status: number) {
   return new Response(JSON.stringify(body), {
     status,
@@ -202,6 +205,17 @@ async function handleSubscriptionCreatedOrUpdated(
   // Upsert subscription record
   await upsertSubscription(supabase, customer.id, subscription);
 
+  const isTrialing = subscription.status === "trialing";
+  if (isNewSubscription && isTrialing && TRIAL_START_CREDITS > 0) {
+    await addCreditsToCustomer(
+      supabase,
+      customer.id,
+      TRIAL_START_CREDITS,
+      "trial start",
+      customer.credit_balance
+    );
+  }
+
   const isActive = subscription.status === "active";
   // Default: plan's original credit value. If paid (not trial), add +50 bonus.
   const planCredits = await getCreditsForPriceId(supabase, newPriceId);
@@ -209,7 +223,8 @@ async function handleSubscriptionCreatedOrUpdated(
   // const creditsToAdd = planCredits;
   const shouldAwardCredits = isActive && planCredits > 0;
 
-  // Award credits for new subscription (trial = plan credits only, paid = plan credits + 50)
+  // Award credits for new paid subscription (no trial): plan credits + 50 bonus.
+  // Trial users get TRIAL_START_CREDITS above; monthly plan credits apply when they become active (handled separately if needed).
   if (isNewSubscription && shouldAwardCredits) {
     const creditsToAdd = planCredits + 50;
     await addCreditsToCustomer(
