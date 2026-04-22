@@ -40,9 +40,18 @@ export interface Sample {
 export interface AdminStats {
   total_users: number;
   total_customers: number;
+  /** Stripe-paid subscriptions (`status` = active), excluding trial. */
   active_subscriptions: number;
+  /** Subscriptions currently in Stripe trial (`status` = trialing). */
+  active_trialing_subscriptions: number;
+  total_packs: number;
   total_samples: number;
+  total_creators: number;
   total_downloads?: number;
+  /** Rows in credit_activity for sample downloads in the last 30 days. */
+  downloads_last_30d: number;
+  /** App users (public.users) created in the last 30 days. */
+  new_users_last_30d: number;
 }
 
 export interface AdminInvite {

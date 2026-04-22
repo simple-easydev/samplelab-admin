@@ -6,19 +6,41 @@ import {
   getCreditCostForSampleType,
 } from "@/lib/credit-rules";
 
+function isoThirtyDaysAgo(): string {
+  const d = new Date();
+  d.setUTCDate(d.getUTCDate() - 30);
+  return d.toISOString();
+}
+
 async function fetchAdminStats(): Promise<AdminStats> {
+  const since30d = isoThirtyDaysAgo();
+
   const [
     { count: totalUsers },
     { count: totalCustomers },
     { count: activeSubscriptions },
+    { count: activeTrialingSubscriptions },
+    { count: totalPacks },
     { count: totalSamples },
+    { count: totalCreators },
     { data: downloadStats },
+    { count: downloadsLast30d },
+    { count: newUsersLast30d },
   ] = await Promise.all([
     supabase.from("users").select("*", { count: "exact", head: true }),
     supabase.from("customers").select("*", { count: "exact", head: true }),
     supabase.from("subscriptions").select("*", { count: "exact", head: true }).eq("status", "active"),
+    supabase.from("subscriptions").select("*", { count: "exact", head: true }).eq("status", "trialing"),
+    supabase.from("packs").select("*", { count: "exact", head: true }),
     supabase.from("samples").select("*", { count: "exact", head: true }),
+    supabase.from("creators").select("*", { count: "exact", head: true }),
     supabase.from("samples").select("download_count"),
+    supabase
+      .from("credit_activity")
+      .select("*", { count: "exact", head: true })
+      .eq("activity_type", "download_charge")
+      .gte("created_at", since30d),
+    supabase.from("users").select("*", { count: "exact", head: true }).gte("created_at", since30d),
   ]);
 
   const totalDownloads = (downloadStats || []).reduce(
@@ -30,8 +52,13 @@ async function fetchAdminStats(): Promise<AdminStats> {
     total_users: totalUsers ?? 0,
     total_customers: totalCustomers ?? 0,
     active_subscriptions: activeSubscriptions ?? 0,
+    active_trialing_subscriptions: activeTrialingSubscriptions ?? 0,
+    total_packs: totalPacks ?? 0,
     total_samples: totalSamples ?? 0,
+    total_creators: totalCreators ?? 0,
     total_downloads: totalDownloads,
+    downloads_last_30d: downloadsLast30d ?? 0,
+    new_users_last_30d: newUsersLast30d ?? 0,
   };
 }
 

@@ -22,6 +22,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
+import { Skeleton } from "@/components/ui/skeleton";
 
 // Mock data for demonstration - replace with real data from your API
 const mockTopSamples = [
@@ -70,18 +71,17 @@ const mockDownloadTrend = [
 export default function AdminDashboard() {
   const { stats, isLoading } = useAdminStats();
 
-  // Mock additional stats - replace with real data
   const kpiStats = {
-    activeSubscribers: 847,
-    activeTrials: 123,
-    totalDownloads30d: 15420,
-    newUsers30d: 234,
+    activeSubscribers: stats?.active_subscriptions ?? 0,
+    activeTrials: stats?.active_trialing_subscriptions ?? 0,
+    totalDownloads30d: stats?.downloads_last_30d ?? 0,
+    newUsers30d: stats?.new_users_last_30d ?? 0,
   };
 
   const contentSummary = {
-    totalPacks: 156,
-    totalSamples: 4230,
-    totalCreators: 45,
+    totalPacks: stats?.total_packs ?? 0,
+    totalSamples: stats?.total_samples ?? 0,
+    totalCreators: stats?.total_creators ?? 0,
   };
 
   return (
@@ -100,7 +100,11 @@ export default function AdminDashboard() {
             <Users className="h-4 w-4 text-blue-500" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-blue-600">{kpiStats.activeSubscribers}</div>
+            {isLoading ? (
+              <Skeleton className="h-8 w-16 mb-1" />
+            ) : (
+              <div className="text-2xl font-bold text-blue-600">{kpiStats.activeSubscribers}</div>
+            )}
             <p className="text-xs text-muted-foreground">Currently paying users</p>
           </CardContent>
         </Card>
@@ -111,8 +115,12 @@ export default function AdminDashboard() {
             <Clock className="h-4 w-4 text-orange-500" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-orange-600">{kpiStats.activeTrials}</div>
-            <p className="text-xs text-muted-foreground">Users in 3-day trial</p>
+            {isLoading ? (
+              <Skeleton className="h-8 w-16 mb-1" />
+            ) : (
+              <div className="text-2xl font-bold text-orange-600">{kpiStats.activeTrials}</div>
+            )}
+            <p className="text-xs text-muted-foreground">Stripe trial in progress</p>
           </CardContent>
         </Card>
 
@@ -122,8 +130,12 @@ export default function AdminDashboard() {
             <Download className="h-4 w-4 text-purple-500" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-purple-600">{kpiStats.totalDownloads30d.toLocaleString()}</div>
-            <p className="text-xs text-muted-foreground">Last 30 days</p>
+            {isLoading ? (
+              <Skeleton className="h-8 w-24 mb-1" />
+            ) : (
+              <div className="text-2xl font-bold text-purple-600">{kpiStats.totalDownloads30d.toLocaleString()}</div>
+            )}
+            <p className="text-xs text-muted-foreground">Last 30 days (credit debits)</p>
           </CardContent>
         </Card>
 
@@ -133,7 +145,11 @@ export default function AdminDashboard() {
             <UserPlus className="h-4 w-4 text-green-500" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-green-600">{kpiStats.newUsers30d}</div>
+            {isLoading ? (
+              <Skeleton className="h-8 w-16 mb-1" />
+            ) : (
+              <div className="text-2xl font-bold text-green-600">{kpiStats.newUsers30d}</div>
+            )}
             <p className="text-xs text-muted-foreground">Last 30 days</p>
           </CardContent>
         </Card>
@@ -175,21 +191,33 @@ export default function AdminDashboard() {
                 <Package className="h-4 w-4 text-blue-500" />
                 <span className="text-sm font-medium">Total Packs</span>
               </div>
-              <span className="text-2xl font-bold">{contentSummary.totalPacks}</span>
+              {isLoading ? (
+                <Skeleton className="h-8 w-12" />
+              ) : (
+                <span className="text-2xl font-bold">{contentSummary.totalPacks}</span>
+              )}
             </div>
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <Music className="h-4 w-4 text-purple-500" />
                 <span className="text-sm font-medium">Total Samples</span>
               </div>
-              <span className="text-2xl font-bold">{contentSummary.totalSamples}</span>
+              {isLoading ? (
+                <Skeleton className="h-8 w-14" />
+              ) : (
+                <span className="text-2xl font-bold">{contentSummary.totalSamples}</span>
+              )}
             </div>
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <UserCircle className="h-4 w-4 text-green-500" />
                 <span className="text-sm font-medium">Total Creators</span>
               </div>
-              <span className="text-2xl font-bold">{contentSummary.totalCreators}</span>
+              {isLoading ? (
+                <Skeleton className="h-8 w-12" />
+              ) : (
+                <span className="text-2xl font-bold">{contentSummary.totalCreators}</span>
+              )}
             </div>
             <Button variant="outline" className="w-full mt-4" asChild>
               <Link to="/admin/library">View Library</Link>

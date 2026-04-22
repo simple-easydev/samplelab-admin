@@ -114,6 +114,84 @@ export interface Database {
         };
         Relationships: [];
       };
+      creators: {
+        Row: {
+          id: string;
+          name: string;
+          email: string | null;
+          bio: string | null;
+          avatar_url: string | null;
+          is_active: boolean | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          name: string;
+          email?: string | null;
+          bio?: string | null;
+          avatar_url?: string | null;
+          is_active?: boolean | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          name?: string;
+          email?: string | null;
+          bio?: string | null;
+          avatar_url?: string | null;
+          is_active?: boolean | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
+      packs: {
+        Row: {
+          id: string;
+          name: string;
+          description: string | null;
+          creator_id: string | null;
+          cover_url: string | null;
+          category_id: string | null;
+          tags: string[] | null;
+          is_premium: boolean | null;
+          status: string;
+          download_count: number | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          name: string;
+          description?: string | null;
+          creator_id?: string | null;
+          cover_url?: string | null;
+          category_id?: string | null;
+          tags?: string[] | null;
+          is_premium?: boolean | null;
+          status?: string;
+          download_count?: number | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          name?: string;
+          description?: string | null;
+          creator_id?: string | null;
+          cover_url?: string | null;
+          category_id?: string | null;
+          tags?: string[] | null;
+          is_premium?: boolean | null;
+          status?: string;
+          download_count?: number | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
       samples: {
         Row: {
           id: string;
@@ -317,7 +395,12 @@ export interface Database {
       };
     };
     Views: { [_ in never]: never };
-    Functions: { [_ in never]: never };
+    Functions: {
+      get_all_samples: {
+        Args: Record<string, never>;
+        Returns: Json;
+      };
+    };
     Enums: { [_ in never]: never };
   };
 }
