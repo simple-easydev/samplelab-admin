@@ -50,7 +50,7 @@ export interface AdminStats {
   total_downloads?: number;
   /** Rows in credit_activity for sample downloads in the last 30 days. */
   downloads_last_30d: number;
-  /** App users (public.users) created in the last 30 days. */
+  /** Customers (public.customers) created in the last 30 days. */
   new_users_last_30d: number;
 }
 

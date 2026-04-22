@@ -3,6 +3,7 @@
 // via trigger (handle_new_user with is_customer: true). Sends confirmation email via Resend.
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { Resend } from "npm:resend@2.0.0";
+import { trackKlaviyoEvent } from "../_shared/klaviyo.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -106,6 +107,21 @@ Deno.serve(async (req) => {
     if (!user?.id) {
       return jsonResponse({ error: "Account could not be created" }, 500);
     }
+
+    // Fire-and-forget: User Signed Up (do not block the API response).
+    // Note: this is "account created" time, not "email confirmed".
+    void trackKlaviyoEvent({
+      name: "User Signed Up",
+      profile: {
+        email: trimmedEmail,
+        external_id: user.id,
+        ...(name ? { first_name: name.trim() } : {}),
+      },
+      properties: {
+        source: "supabase_edge_function",
+      },
+      uniqueId: `signup:${user.id}`,
+    });
 
     // Send confirmation email via Resend so user can confirm and sign in
     const resendApiKey = Deno.env.get("RESEND_API_KEY");

@@ -1,6 +1,7 @@
 // Supabase Edge Function: Setup Customer OAuth
 // After Google/OAuth login, mark user as customer and trigger customer profile creation
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { trackKlaviyoEvent } from "../_shared/klaviyo.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -92,6 +93,25 @@ Deno.serve(async (req) => {
       .select("id, email, name, subscription_tier")
       .eq("user_id", user.id)
       .maybeSingle();
+
+    // Klaviyo: User Signed Up (OAuth path). Only emit when we just created the customer profile.
+    if (customer) {
+      void trackKlaviyoEvent({
+        name: "User Signed Up",
+        profile: {
+          external_id: user.id,
+          email: customer.email ?? user.email ?? undefined,
+          ...(typeof customer.name === "string" && customer.name.trim()
+            ? { first_name: customer.name.trim() }
+            : {}),
+        },
+        properties: {
+          source: "oauth",
+          provider: (user.app_metadata as { provider?: unknown } | null)?.provider ?? null,
+        },
+        uniqueId: `oauth_signup:${user.id}`,
+      });
+    }
 
     return jsonResponse(
       {

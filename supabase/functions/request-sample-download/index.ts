@@ -3,6 +3,7 @@
  * Invoke with: supabase.functions.invoke('request-sample-download', { body: { sampleId }, headers: { Authorization } })
  */
 import { createClient } from "@supabase/supabase-js";
+import { trackKlaviyoEvent } from "../_shared/klaviyo.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -13,6 +14,7 @@ const corsHeaders = {
 /** Must match `samples.audio_url` Storage bucket (full files; signed after credit check). */
 const DEFAULT_BUCKET = "private-audios";
 const DEFAULT_TTL_SEC = 180;
+const DEFAULT_CREDITS_LOW_THRESHOLD = 3;
 
 function jsonResponse(body: object, status: number) {
   return new Response(JSON.stringify(body), {
@@ -261,6 +263,83 @@ Deno.serve(async (req) => {
   }
 
   const expiresAt = new Date(Date.now() + ttl * 1000).toISOString();
+
+  // Klaviyo: track download + credit-related events.
+  // Fire-and-forget; never block the download URL response.
+  if (row.replay !== true) {
+    const { data: customerRow } = await admin
+      .from("customers")
+      .select("id, email, name, credit_balance, subscription_tier")
+      .eq("user_id", user.id)
+      .maybeSingle();
+
+    const creditsCharged = row.credits_charged ?? 0;
+    void trackKlaviyoEvent({
+      name: "Sample Downloaded",
+      profile: {
+        external_id: user.id,
+        email: customerRow?.email ?? user.email ?? undefined,
+      },
+      properties: {
+        sample_id: sampleId,
+        sample_name: row.sample_name ?? null,
+        has_stems: row.has_stems === true,
+        credits_charged: creditsCharged,
+        subscription_tier: customerRow?.subscription_tier ?? null,
+      },
+      uniqueId: idempotencyKey ? `download:${user.id}:${idempotencyKey}` : `download:${user.id}:${sampleId}:${Date.now()}`,
+    });
+
+    // Credits Low
+    const threshold = Number(Deno.env.get("CREDITS_LOW_THRESHOLD") ?? DEFAULT_CREDITS_LOW_THRESHOLD);
+    const balance = typeof customerRow?.credit_balance === "number" ? customerRow.credit_balance : null;
+    if (balance !== null && Number.isFinite(threshold) && balance <= threshold) {
+      void trackKlaviyoEvent({
+        name: "Credits Low",
+        profile: {
+          external_id: user.id,
+          email: customerRow?.email ?? user.email ?? undefined,
+        },
+        properties: {
+          credit_balance: balance,
+          threshold,
+          last_download_sample_id: sampleId,
+          last_download_credits_charged: creditsCharged,
+        },
+        uniqueId: idempotencyKey ? `credits_low:${user.id}:${idempotencyKey}` : `credits_low:${user.id}:${sampleId}:${balance}`,
+      });
+    }
+
+    // Trial Credits Used (best-effort: based on subscription status at time of download)
+    if (creditsCharged > 0 && customerRow?.id) {
+      const { data: subRow } = await admin
+        .from("subscriptions")
+        .select("status, stripe_status")
+        .eq("customer_id", customerRow.id)
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      const isTrialing =
+        subRow?.status === "trialing" || subRow?.stripe_status === "trialing";
+      if (isTrialing) {
+        void trackKlaviyoEvent({
+          name: "Trial Credits Used",
+          profile: {
+            external_id: user.id,
+            email: customerRow?.email ?? user.email ?? undefined,
+          },
+          properties: {
+            credits_used: creditsCharged,
+            sample_id: sampleId,
+            sample_name: row.sample_name ?? null,
+            has_stems: row.has_stems === true,
+          },
+          uniqueId: idempotencyKey ? `trial_credits_used:${user.id}:${idempotencyKey}` : `trial_credits_used:${user.id}:${sampleId}:${Date.now()}`,
+        });
+      }
+    }
+  }
 
   return jsonResponse(
     {

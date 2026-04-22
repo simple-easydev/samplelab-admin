@@ -2,6 +2,7 @@
 // Handles Stripe webhook events and updates subscriptions table
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import Stripe from "https://esm.sh/stripe@14.21.0?target=denonext";
+import { trackKlaviyoEvent } from "../_shared/klaviyo.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -178,7 +179,7 @@ async function handleSubscriptionCreatedOrUpdated(
   // Find customer by stripe_customer_id
   const { data: customer, error: customerError } = await supabase
     .from("customers")
-    .select("id, credit_balance, user_id")
+    .select("id, credit_balance, user_id, email, name, stripe_customer_id")
     .eq("stripe_customer_id", customerId)
     .maybeSingle();
 
@@ -204,6 +205,26 @@ async function handleSubscriptionCreatedOrUpdated(
 
   // Upsert subscription record
   await upsertSubscription(supabase, customer.id, subscription);
+
+  // Klaviyo: User Subscribed (track on first time we see the subscription).
+  if (isNewSubscription) {
+    void trackKlaviyoEvent({
+      name: "User Subscribed",
+      profile: {
+        external_id: customer.user_id ?? undefined,
+        email: customer.email ?? undefined,
+      },
+      properties: {
+        stripe_subscription_id: subscription.id,
+        stripe_customer_id: customer.stripe_customer_id ?? subscription.customer,
+        stripe_price_id: newPriceId ?? null,
+        status: subscription.status,
+        cancel_at_period_end: subscription.cancel_at_period_end,
+        is_trial: subscription.status === "trialing",
+      },
+      uniqueId: `subscribed:${subscription.id}`,
+    });
+  }
 
   const isTrialing = subscription.status === "trialing";
   if (isNewSubscription && isTrialing && TRIAL_START_CREDITS > 0) {
@@ -336,6 +357,11 @@ async function handleSubscriptionDeleted(
 
   // Also update customer subscription_tier to 'free'
   const customerId = subscription.customer as string;
+  const { data: customerRow } = await supabase
+    .from("customers")
+    .select("email, user_id, stripe_customer_id")
+    .eq("stripe_customer_id", customerId)
+    .maybeSingle();
   const { error: customerError } = await supabase
     .from("customers")
     .update({
@@ -347,6 +373,22 @@ async function handleSubscriptionDeleted(
   if (customerError) {
     console.error("Error updating customer tier:", customerError);
   }
+
+  // Klaviyo: Subscription Canceled
+  void trackKlaviyoEvent({
+    name: "Subscription Canceled",
+    profile: {
+      external_id: customerRow?.user_id ?? undefined,
+      email: customerRow?.email ?? undefined,
+    },
+    properties: {
+      stripe_subscription_id: subscription.id,
+      stripe_customer_id: customerRow?.stripe_customer_id ?? subscription.customer,
+      status: subscription.status,
+      cancel_at_period_end: subscription.cancel_at_period_end,
+    },
+    uniqueId: `canceled:${subscription.id}`,
+  });
 }
 
 // Handle invoice payment succeeded

@@ -40,7 +40,8 @@ async function fetchAdminStats(): Promise<AdminStats> {
       .select("*", { count: "exact", head: true })
       .eq("activity_type", "download_charge")
       .gte("created_at", since30d),
-    supabase.from("users").select("*", { count: "exact", head: true }).gte("created_at", since30d),
+    // "New users" in the product = new customers created by the signup trigger.
+    supabase.from("customers").select("*", { count: "exact", head: true }).gte("created_at", since30d),
   ]);
 
   const totalDownloads = (downloadStats || []).reduce(
@@ -215,7 +216,7 @@ async function fetchAllSamplesForAdmin(): Promise<AdminSample[]> {
   ]);
   const { data, error } = rpcResult;
   if (error) throw error;
-  const rows = (data ?? []) as AdminSampleRow[];
+  const rows = (data ?? []) as unknown as AdminSampleRow[];
   return rows.map((row) => ({
     id: row.id,
     name: row.name,
