@@ -75,6 +75,9 @@ Deno.serve(async (req) => {
       return jsonResponse({ error: "A customer account with this email already exists" }, 409);
     }
 
+    const customerAppBase =
+      Deno.env.get("CUSTOMER_APP_URL")?.trim() || "https://portal.thesamplelab.app";
+
     // Create auth user with customer email (no prefix)
     const { data: linkData, error: authError } = await supabase.auth.admin.generateLink({
       type: "signup",
@@ -85,7 +88,7 @@ Deno.serve(async (req) => {
           is_customer: true,
           ...(name ? { name: name.trim() } : {}),
         },
-        redirectTo: "http://localhost:3001/login",
+        redirectTo: `${customerAppBase.replace(/\/$/, "")}/login`,
       },
     });
 
@@ -111,7 +114,7 @@ Deno.serve(async (req) => {
     // Fire-and-forget: User Signed Up (do not block the API response).
     // Note: this is "account created" time, not "email confirmed".
     void trackKlaviyoEvent({
-      name: "User Signed Up",
+      name: "signup",
       profile: {
         email: trimmedEmail,
         external_id: user.id,

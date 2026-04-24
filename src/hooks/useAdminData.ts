@@ -1,6 +1,11 @@
 import useSWR from "swr";
 import { supabase } from "@/lib/supabase";
-import type { User, Customer, AdminStats } from "@/types";
+import type {
+  User,
+  Customer,
+  AdminStats,
+  AdminDashboardDetail,
+} from "@/types";
 import {
   fetchCreditRulesFromSettings,
   getCreditCostForSampleType,
@@ -10,6 +15,99 @@ function isoThirtyDaysAgo(): string {
   const d = new Date();
   d.setUTCDate(d.getUTCDate() - 30);
   return d.toISOString();
+}
+
+function formatDayLabel(iso: string): string {
+  const d = new Date(iso);
+  return d.toLocaleDateString(undefined, { month: "short", day: "numeric" });
+}
+
+function dayKeyUtc(iso: string): string {
+  const d = new Date(iso);
+  return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}-${String(
+    d.getUTCDate()
+  ).padStart(2, "0")}`;
+}
+
+async function fetchAdminDashboardDetail(): Promise<AdminDashboardDetail> {
+  const since30d = isoThirtyDaysAgo();
+
+  const [
+    { data: trendingRows, error: samplesError },
+    { data: packRows, error: packsError },
+    { data: topCreatorsRpc, error: creatorsError },
+    { data: downloadRows, error: dlError },
+  ] = await Promise.all([
+    supabase.rpc("get_trending_samples"),
+    supabase
+      .from("packs")
+      .select("name, download_count, creators(name)")
+      .eq("status", "Published")
+      .order("download_count", { ascending: false, nullsFirst: false })
+      .limit(5),
+    supabase.rpc("get_top_creators"),
+    supabase
+      .from("credit_activity")
+      .select("created_at")
+      .eq("activity_type", "download_charge")
+      .gte("created_at", since30d),
+  ]);
+
+  if (samplesError) throw samplesError;
+  if (packsError) throw packsError;
+  if (creatorsError) throw creatorsError;
+  if (dlError) throw dlError;
+
+  const top_samples = ((trendingRows ?? []) as { name?: string; creator_name?: string; download_count?: number }[])
+    .slice(0, 5)
+    .map((r) => ({
+    name: r.name ?? "—",
+    creator: r.creator_name ?? "—",
+    downloads: r.download_count ?? 0,
+  }));
+
+  const top_packs = (packRows ?? []).map((r: any) => ({
+    name: r.name ?? "—",
+    creator: r.creators?.name ?? "—",
+    downloads: r.download_count ?? 0,
+  }));
+
+  const top_creators = ((topCreatorsRpc ?? []) as any[]).slice(0, 5).map((c) => ({
+    name: c.name ?? "—",
+    samples: c.samples_count ?? 0,
+    packs: c.packs_count ?? 0,
+    rank: c.rank ?? 0,
+  }));
+
+  // Bucket download charges by UTC day for the last 30 days
+  const byDay = new Map<string, number>();
+  for (const row of downloadRows ?? []) {
+    const k = dayKeyUtc((row as { created_at: string }).created_at);
+    byDay.set(k, (byDay.get(k) ?? 0) + 1);
+  }
+
+  const download_trend: { day: string; downloads: number }[] = [];
+  const end = new Date();
+  for (let i = 29; i >= 0; i--) {
+    const d = new Date(
+      Date.UTC(
+        end.getUTCFullYear(),
+        end.getUTCMonth(),
+        end.getUTCDate() - i,
+        12,
+        0,
+        0,
+        0
+      )
+    );
+    const k = dayKeyUtc(d.toISOString());
+    download_trend.push({
+      day: formatDayLabel(d.toISOString()),
+      downloads: byDay.get(k) ?? 0,
+    });
+  }
+
+  return { top_samples, top_packs, top_creators, download_trend };
 }
 
 async function fetchAdminStats(): Promise<AdminStats> {
@@ -136,6 +234,19 @@ export function useAdminStats() {
     }
   );
   return { stats: data, isLoading, isError: error, refresh: mutate };
+}
+
+export function useAdminDashboardDetail() {
+  const { data, error, isLoading, mutate } = useSWR<AdminDashboardDetail>(
+    "admin-dashboard-detail",
+    fetchAdminDashboardDetail,
+    {
+      dedupingInterval: 120000,
+      revalidateOnMount: true,
+      keepPreviousData: true,
+    }
+  );
+  return { detail: data, isLoading, isError: error, refresh: mutate };
 }
 
 export function useAdminUsers() {

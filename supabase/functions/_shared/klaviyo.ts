@@ -20,8 +20,20 @@ type TrackEventArgs = {
 };
 
 const KLAVIYO_EVENTS_URL = "https://a.klaviyo.com/api/events/";
-// Use the newest stable revision that your Klaviyo account supports.
-const KLAVIYO_REVISION = "2026-04-15";
+
+function getKlaviyoApiKey(): string | undefined {
+  return (
+    Deno.env.get("KLAVIYO_API_KEY")?.trim() ||
+    Deno.env.get("KLAVIYO_PRIVATE_API_KEY")?.trim()
+  );
+}
+
+function getKlaviyoRevision(): string {
+  return (
+    Deno.env.get("KLAVIYO_API_REVISION")?.trim() ||
+    "2025-10-15"
+  );
+}
 
 function safeJsonParse(text: string): unknown {
   try {
@@ -32,7 +44,7 @@ function safeJsonParse(text: string): unknown {
 }
 
 export async function trackKlaviyoEvent(args: TrackEventArgs): Promise<void> {
-  const apiKey = Deno.env.get("KLAVIYO_PRIVATE_API_KEY")?.trim();
+  const apiKey = getKlaviyoApiKey();
   if (!apiKey) return; // allow running without Klaviyo configured
 
   const { name, profile, properties, uniqueId, time } = args;
@@ -74,7 +86,7 @@ export async function trackKlaviyoEvent(args: TrackEventArgs): Promise<void> {
       headers: {
         accept: "application/json",
         "content-type": "application/json",
-        revision: KLAVIYO_REVISION,
+        revision: getKlaviyoRevision(),
         Authorization: `Klaviyo-API-Key ${apiKey}`,
       },
       body: JSON.stringify(body),

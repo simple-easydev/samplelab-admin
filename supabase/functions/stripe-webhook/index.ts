@@ -191,7 +191,7 @@ async function handleSubscriptionCreatedOrUpdated(
   // Check if this is a new subscription or an update (and if update, get previous price for upgrade detection)
   const { data: existingSubscription } = await supabase
     .from("subscriptions")
-    .select("id, stripe_price_id")
+    .select("id, stripe_price_id, status, stripe_status")
     .eq("stripe_subscription_id", subscription.id)
     .maybeSingle();
 
@@ -203,13 +203,50 @@ async function handleSubscriptionCreatedOrUpdated(
     newPriceId &&
     existingSubscription.stripe_price_id !== newPriceId;
 
+  const previousStatus =
+    existingSubscription?.status ?? existingSubscription?.stripe_status ?? null;
+  const wasTrialing = previousStatus === "trialing";
+
   // Upsert subscription record
   await upsertSubscription(supabase, customer.id, subscription);
 
-  // Klaviyo: User Subscribed (track on first time we see the subscription).
+  // Klaviyo: trial_started / subscription_active (per product event names)
   if (isNewSubscription) {
+    if (subscription.status === "trialing") {
+      void trackKlaviyoEvent({
+        name: "trial_started",
+        profile: {
+          external_id: customer.user_id ?? undefined,
+          email: customer.email ?? undefined,
+        },
+        properties: {
+          stripe_subscription_id: subscription.id,
+          stripe_customer_id: customer.stripe_customer_id ?? subscription.customer,
+          stripe_price_id: newPriceId ?? null,
+          status: subscription.status,
+          cancel_at_period_end: subscription.cancel_at_period_end,
+        },
+        uniqueId: `trial_started:${subscription.id}`,
+      });
+    } else if (subscription.status === "active") {
+      void trackKlaviyoEvent({
+        name: "subscription_active",
+        profile: {
+          external_id: customer.user_id ?? undefined,
+          email: customer.email ?? undefined,
+        },
+        properties: {
+          stripe_subscription_id: subscription.id,
+          stripe_customer_id: customer.stripe_customer_id ?? subscription.customer,
+          stripe_price_id: newPriceId ?? null,
+          status: subscription.status,
+        },
+        uniqueId: `subscription_active:${subscription.id}:new`,
+      });
+    }
+  } else if (wasTrialing && subscription.status === "active") {
     void trackKlaviyoEvent({
-      name: "User Subscribed",
+      name: "subscription_active",
       profile: {
         external_id: customer.user_id ?? undefined,
         email: customer.email ?? undefined,
@@ -219,10 +256,9 @@ async function handleSubscriptionCreatedOrUpdated(
         stripe_customer_id: customer.stripe_customer_id ?? subscription.customer,
         stripe_price_id: newPriceId ?? null,
         status: subscription.status,
-        cancel_at_period_end: subscription.cancel_at_period_end,
-        is_trial: subscription.status === "trialing",
+        from_trial: true,
       },
-      uniqueId: `subscribed:${subscription.id}`,
+      uniqueId: `subscription_active:${subscription.id}:from_trial`,
     });
   }
 
@@ -330,6 +366,27 @@ async function addCreditsToCustomer(
     console.error("Error updating customer credit balance:", creditError);
   } else {
     console.log(`Successfully added ${amount} credits for ${reason}. New balance: ${newBalance}`);
+
+    const { data: cust } = await supabase
+      .from("customers")
+      .select("user_id, email")
+      .eq("id", customerId)
+      .maybeSingle();
+    if (cust) {
+      void trackKlaviyoEvent({
+        name: "credit_topup",
+        profile: {
+          external_id: cust.user_id ?? undefined,
+          email: cust.email ?? undefined,
+        },
+        properties: {
+          amount,
+          reason,
+          balance_after: newBalance,
+        },
+        uniqueId: `credit_topup:${customerId}:${reason}:${amount}`,
+      });
+    }
   }
 }
 
@@ -374,9 +431,8 @@ async function handleSubscriptionDeleted(
     console.error("Error updating customer tier:", customerError);
   }
 
-  // Klaviyo: Subscription Canceled
   void trackKlaviyoEvent({
-    name: "Subscription Canceled",
+    name: "subscription_cancelled",
     profile: {
       external_id: customerRow?.user_id ?? undefined,
       email: customerRow?.email ?? undefined,
@@ -387,7 +443,7 @@ async function handleSubscriptionDeleted(
       status: subscription.status,
       cancel_at_period_end: subscription.cancel_at_period_end,
     },
-    uniqueId: `canceled:${subscription.id}`,
+    uniqueId: `subscription_cancelled:${subscription.id}`,
   });
 }
 

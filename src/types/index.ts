@@ -54,6 +54,40 @@ export interface AdminStats {
   new_users_last_30d: number;
 }
 
+/** Admin dashboard tables (replaces mock seed data). */
+export interface AdminDashboardTopSample {
+  name: string;
+  creator: string;
+  downloads: number;
+}
+
+export interface AdminDashboardTopPack {
+  name: string;
+  creator: string;
+  downloads: number;
+}
+
+export interface AdminDashboardTopCreator {
+  name: string;
+  samples: number;
+  packs: number;
+  /** From get_top_creators (platform ranking, not raw download sum). */
+  rank: number;
+}
+
+export interface AdminDashboardDownloadDay {
+  /** Short label, e.g. "Apr 1" */
+  day: string;
+  downloads: number;
+}
+
+export interface AdminDashboardDetail {
+  top_samples: AdminDashboardTopSample[];
+  top_packs: AdminDashboardTopPack[];
+  top_creators: AdminDashboardTopCreator[];
+  download_trend: AdminDashboardDownloadDay[];
+}
+
 export interface AdminInvite {
   id: string;
   email: string;
