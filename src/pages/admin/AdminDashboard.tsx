@@ -303,6 +303,21 @@ export default function AdminDashboard() {
           )}
         </CardContent>
       </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Activity className="h-5 w-5" />
+            Admin activity
+          </CardTitle>
+          <CardDescription>Audit log is not wired in this app yet</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <p className="text-sm text-muted-foreground">
+            Recent admin actions will show here when an activity feed is added to the database.
+          </p>
+        </CardContent>
+      </Card>
     </div>
   );
 }
