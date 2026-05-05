@@ -19,7 +19,12 @@ function isoThirtyDaysAgo(): string {
 
 function formatDayLabel(iso: string): string {
   const d = new Date(iso);
-  return d.toLocaleDateString(undefined, { month: "short", day: "numeric" });
+  // Keep labels consistent with UTC bucketing (dayKeyUtc).
+  return new Intl.DateTimeFormat(undefined, {
+    month: "short",
+    day: "numeric",
+    timeZone: "UTC",
+  }).format(d);
 }
 
 function dayKeyUtc(iso: string): string {
@@ -38,14 +43,14 @@ async function fetchAdminDashboardDetail(): Promise<AdminDashboardDetail> {
     { data: topCreatorsRpc, error: creatorsError },
     { data: downloadRows, error: dlError },
   ] = await Promise.all([
-    supabase.rpc("get_trending_samples"),
+    supabase.rpc("get_trending_samples" as any),
     supabase
       .from("packs")
       .select("name, download_count, creators(name)")
       .eq("status", "Published")
       .order("download_count", { ascending: false, nullsFirst: false })
       .limit(5),
-    supabase.rpc("get_top_creators"),
+    supabase.rpc("get_top_creators" as any),
     supabase
       .from("credit_activity")
       .select("created_at")

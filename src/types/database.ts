@@ -400,6 +400,14 @@ export interface Database {
         Args: Record<string, never>;
         Returns: Json;
       };
+      get_trending_samples: {
+        Args: Record<string, never>;
+        Returns: Json;
+      };
+      get_top_creators: {
+        Args: Record<string, never>;
+        Returns: Json;
+      };
     };
     Enums: { [_ in never]: never };
   };

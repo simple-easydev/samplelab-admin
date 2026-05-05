@@ -28,6 +28,8 @@ export default function AdminDashboard() {
   const { stats, isLoading } = useAdminStats();
   const { detail, isLoading: detailLoading } = useAdminDashboardDetail();
 
+  console.log({ detail })
+
   const kpiStats = {
     activeSubscribers: stats?.active_subscriptions ?? 0,
     activeTrials: stats?.active_trialing_subscriptions ?? 0,
@@ -122,7 +124,7 @@ export default function AdminDashboard() {
               <TrendingUp className="h-5 w-5" />
               Downloads trend
             </CardTitle>
-            <CardDescription>Sample download credit debits by day (last 30 days)</CardDescription>
+            <CardDescription>Sample download credit debits by UTC day (last 30 days)</CardDescription>
           </CardHeader>
           <CardContent>
             {detailLoading ? (
@@ -136,12 +138,14 @@ export default function AdminDashboard() {
             ) : (
               <div className="h-64 flex items-end justify-between gap-1 min-w-0">
                 {downloadTrend.map((item, index) => (
-                  <div key={index} className="flex-1 flex flex-col items-center gap-2 min-w-0">
-                    <div
-                      className="w-full bg-blue-500 rounded-t hover:bg-blue-600 transition-colors"
-                      style={{ height: `${(item.downloads / maxDownloads) * 100}%`, minHeight: "4px" }}
-                      title={`${item.downloads} downloads`}
-                    />
+                  <div key={index} className="flex-1 flex flex-col items-center gap-2 min-w-0 h-full">
+                    <div className="w-full flex-1 flex items-end">
+                      <div
+                        className="w-full bg-blue-500 rounded-t hover:bg-blue-600 transition-colors"
+                        style={{ height: `${(item.downloads / maxDownloads) * 100}%`, minHeight: "4px" }}
+                        title={`${item.downloads} downloads`}
+                      />
+                    </div>
                     <span className="text-xs text-muted-foreground truncate w-full text-center">
                       {item.day}
                     </span>
